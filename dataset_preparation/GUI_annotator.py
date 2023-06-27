@@ -171,7 +171,8 @@ class image_anotator():
         img_ = cv2.imread(self.path_image)
         img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB )
         img_ = cv2.resize(img_,(800,800))
-        
+        img_ = cv2.rectangle(img_, (160,600), (550,800), color=(255, 0, 0),thickness=2)
+
         img_ = Image.fromarray(img_)
         img_ = ImageTk.PhotoImage(img_)
         self.panel = tk.Label(self.annotator, image=img_)
@@ -204,9 +205,9 @@ class image_anotator():
         else:
             key_ = 'l'
 
-        img_ = cv2.imread(self.path_image)
-        img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB )
-        img_ = cv2.resize(img_,(800,800))
+        # img_ = cv2.imread(self.path_image)
+        # img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB )
+        # img_ = cv2.resize(img_,(800,800))
         
         #(tree, other_obstacles, slope, waterhole, mud, jump, traversable_grass, smooth_road)
         if(key_ == '0'):
@@ -237,12 +238,12 @@ class image_anotator():
         self.save_annotations()
         self.image_label = None
 
-        img_ = Image.fromarray(img_)
-        img_ = ImageTk.PhotoImage(img_)
-        self.panel = tk.Label(self.annotator, image=img_)
-        self.panel.pack()
-        self.panel.place(x=400, y=50)
-        self.panel.image = img_
+        # img_ = Image.fromarray(img_)
+        # img_ = ImageTk.PhotoImage(img_)
+        # self.panel = tk.Label(self.annotator, image=img_)
+        # self.panel.pack()
+        # self.panel.place(x=400, y=50)
+        # self.panel.image = img_
 
     def save_annotations(self,):
         output_size = (800,800,3)    
@@ -253,7 +254,7 @@ class image_anotator():
                 with open(self.main_path_GT+self.list_images[self.counter_frame][:-4] + '.txt', 'w') as f:
                     f.write(str(self.image_label))
                 f.close()
-
+                time.sleep(0.3)
 
                 #print('saved!')  
                 self.info_["text"] = 'The ground truth has been generated; The image has been labeled as: ' + self.list_labels[self.image_label]
