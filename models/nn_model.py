@@ -1,5 +1,5 @@
 """
-	The model
+	The BADGR baseline model
 """
 
 import torch
@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 
 class predictive_model_badgr(nn.Module):
-    def __init__(self, planning_horizon, num_of_events):
+    def __init__(self, planning_horizon, num_of_events, action_dimension):
         # the architecture in brief:
         # three CNN layers with RELU activation fcn
         # + 4 fully connected_layer
@@ -17,9 +17,9 @@ class predictive_model_badgr(nn.Module):
         super(predictive_model_badgr, self).__init__()
         self.planning_horizon = planning_horizon
         # CNN layers
-        self.CNN_layer1 = nn.Conv2d(3,32,[5,5],2)
-        self.CNN_layer2 = nn.Conv2d(32,64,[3,3],2)
-        self.CNN_layer3 = nn.Conv2d(64, 64, [3, 3],2)
+        self.CNN_layer1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5, stride=2)
+        self.CNN_layer2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=2)
+        self.CNN_layer3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=2)
         self.flatten = nn.Flatten()
         # MLP mayers
         self.MLP_layer1 = nn.Linear(6272,256)
@@ -33,12 +33,12 @@ class predictive_model_badgr(nn.Module):
         self.MLP_last_layers = []
 
         for i in range(planning_horizon):
-            self.control_action_mlps_layer1.append(nn.Linear(1,32))
+            self.control_action_mlps_layer1.append(nn.Linear(action_dimension,32))
             self.control_action_mlps_layer2.append(nn.Linear(32,32))
             # last fully connected layer
             self.MLP_last_layers.append(nn.Linear(128, num_of_events))
         # LSTM network takes a set of actions and predicts the corresponding events that might happen
-        self.LSTM_network = nn.LSTM(32,128)
+        self.LSTM_network = nn.LSTM(input_size=32, hidden_size=128)
 
 
     def forward(self, x, actions):
@@ -72,12 +72,13 @@ class predictive_model_badgr(nn.Module):
         return outputs
 
 if __name__ == '__main__':
-    planning_horizon = 10
-    num_of_events = 4
+    planning_horizon = 15
+    num_of_events = 8
     batch_size = 20
-    predictive_model = predictive_model_badgr(planning_horizon, num_of_events)
+    action_dimension = 2
+    predictive_model = predictive_model_badgr(planning_horizon, num_of_events, action_dimension)
     input_image = torch.rand((batch_size,3,128,72))
-    actions = torch.rand(10,batch_size,1)
+    actions = torch.rand(planning_horizon,batch_size,action_dimension)
     # for i in range(planning_horizon):
     #     actions.append(torch.rand(1,1))
     predictive_model(input_image, actions)
