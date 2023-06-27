@@ -11,7 +11,7 @@ class image_anotator():
         self.counter_frame = 0 
         self.flag_save = False
         self.image_label = None
-        self.list_labels = ['Tree', 'Other_obstacles', 'Slope', 'Waterhole', 'Mud', 'Jump', 'Traversable_grass',
+        self.list_labels = ['Tree', 'Other_obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', 'Traversable_grass',
                             'Smooth_road']
 
         self.annotator = tk.Tk()
@@ -44,10 +44,10 @@ class image_anotator():
         #self.button4.place(x=1200, y=850)
         
         self.annotator.bind('<Motion>', self.motion)
-        #(tree, other_obstacles, slope, waterhole, mud, jump, traversable_grass, smooth_road)
+        #(tree, other_obstacles, Human, waterhole, mud, jump, traversable_grass, smooth_road)
         self.annotator.bind('0',self.annot) # tree
         self.annotator.bind('1',self.annot) # other_obstacles
-        self.annotator.bind('2',self.annot) # slope
+        self.annotator.bind('2',self.annot) # Human
         self.annotator.bind('3', self.annot)# waterhole
         self.annotator.bind('4', self.annot)# mud
         self.annotator.bind('5', self.annot)  # jump
@@ -80,7 +80,7 @@ class image_anotator():
                                             "\n"+
         "\n"+"2- Choose the image label from the following options:"+
                                             "\n"+
-        "\n"+"Tree (0), Other_obstacles (1), Slope (2), Waterhole (3), Mud (4), Jump (5)"+
+        "\n"+"Tree (0), Other_obstacles (1), Human (2), Waterhole (3), Mud (4), Jump (5)"+
                                             "\n"+
         "\n" +"Traversable_grass (6), Smooth_road (7)"
                                             "\n"+
@@ -209,7 +209,7 @@ class image_anotator():
         # img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB )
         # img_ = cv2.resize(img_,(800,800))
         
-        #(tree, other_obstacles, slope, waterhole, mud, jump, traversable_grass, smooth_road)
+        #(tree, other_obstacles, human, waterhole, mud, jump, traversable_grass, smooth_road)
         if(key_ == '0'):
             self.info_["text"] = 'Labeled as Tree'
             self.image_label = 0
@@ -217,7 +217,7 @@ class image_anotator():
             self.info_["text"] = 'Labeled as Obstacle'
             self.image_label = 1
         elif(key_ == '2'):
-            self.info_["text"] = 'Labeled as Slope'
+            self.info_["text"] = 'Labeled as Human'
             self.image_label = 2
         elif(key_ == '3'):
             self.info_["text"] = 'Labeled as Waterhole'
