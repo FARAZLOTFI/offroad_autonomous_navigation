@@ -53,6 +53,7 @@ class image_anotator():
         self.annotator.bind('5', self.annot)  # jump
         self.annotator.bind('6', self.annot)  # traversable_grass
         self.annotator.bind('7', self.annot)  # smooth_road
+        self.annotator.bind('8', self.annot)  # smooth_road
 
         self.annotator.bind('<space>',self.skip_labeled_images)#
         #self.annotator.bind('<Escape>',self.annot)#
@@ -237,6 +238,9 @@ class image_anotator():
         elif(key_ == '7'):
             self.info_["text"] = 'Labeled as Smooth road'
             self.image_label = 7
+        elif (key_ == '8'):
+            self.info_["text"] = 'Labeled as wet_leaves'
+            self.image_label = 8
 
         self.save_annotations()
         self.image_label = None
