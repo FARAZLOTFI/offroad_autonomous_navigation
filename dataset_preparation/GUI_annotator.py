@@ -54,7 +54,7 @@ class image_anotator():
         self.annotator.bind('6', self.annot)  # traversable_grass
         self.annotator.bind('7', self.annot)  # smooth_road
 
-        #self.annotator.bind('<space>',self.annot)#
+        self.annotator.bind('<space>',self.skip_labeled_images)#
         #self.annotator.bind('<Escape>',self.annot)#
 
         self.annotator.bind('n', self.nextFrame)  #
@@ -88,6 +88,8 @@ class image_anotator():
                                             "\n"+
         "\n"+"Use 'n' and 'b' to go to the next/previous image"
                                             "\n"+
+        "\n"+"Lastly, use 'space' to directly get to the unlabeled images"
+                                           "\n" +
         "\n"+"Good luck :D ")
 
         l.config(font =("Time New Roman", 10))
@@ -161,7 +163,8 @@ class image_anotator():
             messagebox.showinfo("Warning", "This image is not annotated yet!")
             self.flag_save = True
 
-
+    def skip_labeled_images(self,event):
+        self.counter_frame = len(os.listdir(self.main_path_GT)) - 2
     def motion(self,event):
         self.mouse_x, self.mouse_y = event.x, event.y
         #print('{}, {}'.format(mouse_x, mouse_y))
