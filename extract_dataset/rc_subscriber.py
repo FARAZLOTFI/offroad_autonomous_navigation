@@ -24,7 +24,7 @@ class RCDataSubscriber:
 
         self.ts = message_filters.ApproximateTimeSynchronizer(
             [self.image_subscriber, self.teensy_subscriber, self.imu_subscriber, self.gps_subscriber,
-             self.depth_subscriber], 25, max_delay)
+             self.depth_subscriber], 30, max_delay)
         self.ts.registerCallback(self.rc_callback)
 
         # unsynchronized topics
@@ -35,7 +35,7 @@ class RCDataSubscriber:
         self.gps_subscriber = rospy.Subscriber('/gps', NavSatFix, self.gps_callback)
 
         self.file_counter = 0
-        self.save = True
+        self.save = False
         self.bag_name = bag_name
 
         # For verifying synchronization
