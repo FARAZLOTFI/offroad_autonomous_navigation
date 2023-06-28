@@ -12,7 +12,7 @@ class image_anotator():
         self.flag_save = False
         self.image_label = None
         self.list_labels = ['Tree', 'Other_obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', 'Traversable_grass',
-                            'Smooth_road']
+                            'Smooth_road','Wet_leaves']
 
         self.annotator = tk.Tk()
         self.annotator.geometry("640x480")
@@ -44,7 +44,7 @@ class image_anotator():
         #self.button4.place(x=1200, y=850)
         
         self.annotator.bind('<Motion>', self.motion)
-        #(tree, other_obstacles, Human, waterhole, mud, jump, traversable_grass, smooth_road)
+        #(tree, other_obstacles, Human, waterhole, mud, jump, traversable_grass, smooth_road, Wet_leaves)
         self.annotator.bind('0',self.annot) # tree
         self.annotator.bind('1',self.annot) # other_obstacles
         self.annotator.bind('2',self.annot) # Human
@@ -53,7 +53,7 @@ class image_anotator():
         self.annotator.bind('5', self.annot)  # jump
         self.annotator.bind('6', self.annot)  # traversable_grass
         self.annotator.bind('7', self.annot)  # smooth_road
-        self.annotator.bind('8', self.annot)  # smooth_road
+        self.annotator.bind('8', self.annot)  # Wet_leaves
 
         self.annotator.bind('<space>',self.skip_labeled_images)#
         #self.annotator.bind('<Escape>',self.annot)#
@@ -83,7 +83,7 @@ class image_anotator():
                                             "\n"+
         "\n"+"Tree (0), Other_obstacles (1), Human (2), Waterhole (3), Mud (4), Jump (5)"+
                                             "\n"+
-        "\n" +"Traversable_grass (6), Smooth_road (7)"
+        "\n" +"Traversable_grass (6), Smooth_road (7), Wet_leaves (8)"
                                             "\n"+
         "\n"+"For each option press the corresponding number from your keyboard"+
                                             "\n"+
@@ -213,7 +213,7 @@ class image_anotator():
         # img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB )
         # img_ = cv2.resize(img_,(800,800))
         
-        #(tree, other_obstacles, human, waterhole, mud, jump, traversable_grass, smooth_road)
+        #(tree, other_obstacles, human, waterhole, mud, jump, traversable_grass, smooth_road, Wet_leaves)
         if(key_ == '0'):
             self.info_["text"] = 'Labeled as Tree'
             self.image_label = 0
