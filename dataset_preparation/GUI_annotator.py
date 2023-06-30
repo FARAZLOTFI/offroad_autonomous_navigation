@@ -175,7 +175,7 @@ class image_anotator():
         img_ = cv2.imread(self.path_image)
         img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB )
         img_ = cv2.resize(img_,(800,800))
-        img_ = cv2.rectangle(img_, (160,600), (550,800), color=(255, 0, 0),thickness=2)
+        img_ = cv2.rectangle(img_, (180,600), (550,800), color=(255, 0, 0),thickness=2)
 
         img_ = Image.fromarray(img_)
         img_ = ImageTk.PhotoImage(img_)
