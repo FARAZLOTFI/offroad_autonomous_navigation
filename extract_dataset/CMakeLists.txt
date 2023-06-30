@@ -19,7 +19,7 @@ include_directories(
 )
 
 install(PROGRAMS
-   rc_subscriber.py
+   rc_subscriber_node.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

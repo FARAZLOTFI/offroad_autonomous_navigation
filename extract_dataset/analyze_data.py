@@ -28,13 +28,14 @@ def euler_from_quaternion(w, x, y, z):
     return [roll_x, pitch_y, yaw_z]  # in radians
 
 
-directory = '/home/farnoosh/rc_car/topic_data/'
+load_directory = '/home/farnoosh/rc_car/topic_data/'
+save_directory = '/home/farnoosh/rc_car/src/extract_dataset/plots/'
 bins = 50
 
 data_matrix = []
 euler_angle_matrix = []
-for filename in os.listdir(directory):
-    f = os.path.join(directory, filename)
+for filename in os.listdir(load_directory):
+    f = os.path.join(load_directory, filename)
     # checking if it is a file
     if os.path.isfile(f):
         with open(f, 'rb') as datafile:
@@ -48,14 +49,14 @@ euler_angle_matrix = np.asarray(euler_angle_matrix)
 plt.hist(data_matrix[:, 0], bins=bins)
 plt.title('Steering Angle')
 plt.ylabel('Count')
-plt.savefig('steering_angle_dist.png')
+plt.savefig(save_directory + 'steering_angle_dist.png')
 
 plt.clf()
 
 plt.hist(data_matrix[:, 1], bins=bins)
 plt.title('Throttle')
 plt.ylabel('Count')
-plt.savefig('throttle_dist.png')
+plt.savefig(save_directory + 'throttle_dist.png')
 
 plt.clf()
 
@@ -66,14 +67,14 @@ plt.hist(max_diff, bins=bins)
 plt.title('Maximum Time Delay Between Synchronized Signals')
 plt.ylabel('Count')
 plt.xlabel('Seconds')
-plt.savefig('delay_dist.png')
+plt.savefig(save_directory + 'delay_dist.png')
 
 plt.clf()
 
 plt.hist(euler_angle_matrix[:, 2], bins=bins)
 plt.title('Heading angle - yaw')
 plt.ylabel('Count')
-plt.savefig('heading_angle_yaw.png')
+plt.savefig(save_directory + 'heading_angle_yaw.png')
 
 
 
