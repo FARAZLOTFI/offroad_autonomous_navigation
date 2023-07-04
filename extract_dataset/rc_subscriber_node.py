@@ -35,7 +35,7 @@ class RCDataSubscriber:
         self.gps_subscriber = rospy.Subscriber('/gps', NavSatFix, self.gps_callback)
 
         self.file_counter = 0
-        self.save = False
+        self.save = True
         self.bag_name = bag_name
 
         # For verifying synchronization
