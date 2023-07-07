@@ -1,1 +1,1 @@
-realworld_data_path = '/home/barbados/rc_car_realworld_data/class_building/topics/'
+realworld_data_path = '/home/barbados/rc_car_realworld_data/slope/'

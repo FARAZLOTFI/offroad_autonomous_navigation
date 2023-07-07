@@ -14,12 +14,11 @@ def GPS_deg2distance_XY(lon1,lon2,lat1,lat2):
     dy = (lat1 - lat2) * 40000 / 360
     return dx*1000, dy*1000 # in meters
 
-# def GPS_deg2distance_XY(lon1,lon2,lat1,lat2):
-#     loc1 = (lat1, lon1)
-#     loc2 = (lat2, lon2)
-#     hs.haversine(loc1, loc2,unit=Unit.METERS)
-#
-#     return loc1, loc2
+def GPS_deg2vel(lon1,lon2,lat1,lat2, time_taken=0.2):
+    dx = ((lon1 - lon2) * 40000 * np.cos((lat1 + lat2) * np.pi / 360) / 360)*1000
+    dy = ((lat1 - lat2) * 40000 / 360)*1000
+    vel = np.sqrt(dx**2 + dy**2)/time_taken
+    return vel**2
 
 def euler_from_quaternion(x, y, z, w):
     """
@@ -53,18 +52,20 @@ class MHE_MPC():
         # Measurement configuration comes before state initialization as initialization is done based on the first meas
         self.offline_mode = True
         if self.offline_mode:
-            self.topic_data_folder_path =  config.realworld_data_path # TODO to put this in a config file
+            self.topic_data_folder_path =  config.realworld_data_path + 'topics/'# TODO to put this in a config file
             self.topic_data_list = os.listdir(self.topic_data_folder_path)
             self.topic_data_list.sort()
 
         self.initial_GPS_lon = None
         self.initial_GPS_lat = None
 
+        self.previous_GPS_lon = None
+        self.previous_GPS_lat = None
+
         self.state_initialization()
         # MHE comes after all these as it needs the state initial value as the first guess
         self.mhe = do_mpc.estimator.MHE(self.model,
-                                   ['pose_x', 'pose_y', 'global_orientation', 'velocity', 'C1',
-                                    'C2','Cm1', 'Cm2', 'Cr2', 'Cr0'])
+                                   ['pose_x', 'pose_y', 'global_orientation', 'velocity', 'C1','Cm1', 'Cm2', 'Cr2', 'Cr0'])
         self.MHE_initialization()
 
     def model_initialization(self):
@@ -93,7 +94,7 @@ class MHE_MPC():
         # C1 & C2 the two geometrical parameters that need to be set
         # Cm1 & Cm2 the two motor parameters that need to be identified using MHE
         C1 = self.model.set_variable('parameter', 'C1')  # geometrical param (-)
-        C2 = self.model.set_variable('parameter', 'C2')  # geometrical param (1/m)
+        C2 = 1/0.59 #self.model.set_variable('parameter', 'C2')  # geometrical param (1/m) -> measured as 59 cm
         Cm1 = self.model.set_variable('parameter', 'Cm1')  # motor param (m/s**2)
         Cm2 = self.model.set_variable('parameter', 'Cm2')  # motor param (1/s)
         Cr2 = self.model.set_variable('parameter', 'Cr2')  # second order friction param (1/m)
@@ -106,6 +107,7 @@ class MHE_MPC():
         X_measured = self.model.set_meas('X_pose_GPS', X, meas_noise=True)
         Y_measured = self.model.set_meas('Y_pose_GPS', Y, meas_noise=True)
         Sai_measured = self.model.set_meas('Heading_angle_IMU', Sai, meas_noise=True)
+        vel_measured = self.model.set_meas('vel', V**2, meas_noise=True)
 
         steering_angle_measured = self.model.set_meas('steering_angle_meas', sigma, meas_noise=True)
         throttle_measured = self.model.set_meas('throttle_meas', D, meas_noise=True)
@@ -114,7 +116,7 @@ class MHE_MPC():
         dX = V * np.cos(Sai + C1 * sigma)
         dY = V * np.sin(Sai + C1 * sigma)
         dSai = V * sigma * C2
-        dV = (Cm1 - Cm2 * V) * D + (Cr2 * V ** 2 + Cr0 + (V * sigma) ** 2 * (C2 * C1 ** 2))*np.sign(V)
+        dV = (Cm1 - Cm2 * V * np.sign(V)) * D - ((Cr2 * V ** 2 + Cr0) + (V * sigma) ** 2 * (C2 * C1 ** 2)  ) *np.sign(V)
 
         self.model.set_rhs('pose_x', dX, process_noise=True)
         self.model.set_rhs('pose_y', dY, process_noise=True)
@@ -126,7 +128,7 @@ class MHE_MPC():
     def MHE_initialization(self):
         setup_mhe = {
             't_step': 0.2,
-            'n_horizon': 20,
+            'n_horizon': 5,
             'store_full_solution': True,
             'meas_from_data': True
         }
@@ -134,43 +136,43 @@ class MHE_MPC():
 
         num_of_measurements = 3
         num_of_states = 4
-        num_of_parameters = 6
-        P_v = np.diag(np.array([1, 1, 1,1,1]))  # Covariance of the measurement noise
+        num_of_parameters = 5
+        P_v = np.diag(np.array([1, 1, 1,1,1,1]))  # Covariance of the measurement noise
         P_x = np.eye(num_of_states)
-        P_p = 10 * np.eye(num_of_parameters)
+        P_p = np.eye(num_of_parameters)
         P_w = np.eye(num_of_states)
         # P_w standing for the process noise
 
         self.mhe.set_default_objective(P_x, P_v, P_p, P_w)
 
         # bounds for the parameters
-        lf = 0.35  # (m) center of gravity to the front wheel
-        lr = 0.35  # (m) center of gravity to the front wheel
+        lf = 0.3  # (m) center of gravity to the front wheel
+        lr = 0.3  # (m) center of gravity to the front wheel
         self.mhe.bounds['lower', '_p_est', 'C1'] = 0.95 * lr / (lr + lf)
         self.mhe.bounds['upper', '_p_est', 'C1'] = 1.05 * lr / (lr + lf)
 
-        self.mhe.bounds['lower', '_p_est', 'C2'] = 0.9 * 1 / (lr + lf)
-        self.mhe.bounds['upper', '_p_est', 'C2'] = 1.1 * 1 / (lr + lf)
+        # self.mhe.bounds['lower', '_p_est', 'C2'] = 0.9 * 1 / (lr + lf)
+        # self.mhe.bounds['upper', '_p_est', 'C2'] = 1.1 * 1 / (lr + lf)
 
-        self.mhe.bounds['lower', '_p_est', 'Cm1'] = 10
+        self.mhe.bounds['lower', '_p_est', 'Cm1'] = 5
         self.mhe.bounds['upper', '_p_est', 'Cm1'] = 14
 
         self.mhe.bounds['lower', '_p_est', 'Cm2'] = 1
-        self.mhe.bounds['upper', '_p_est', 'Cm2'] = 4
+        self.mhe.bounds['upper', '_p_est', 'Cm2'] = 8
 
-        self.mhe.bounds['lower', '_p_est', 'Cr2'] = 0.1
-        self.mhe.bounds['upper', '_p_est', 'Cr2'] = 0.25
-
-        self.mhe.bounds['lower', '_p_est', 'Cr0'] = 0.6
-        self.mhe.bounds['upper', '_p_est', 'Cr0'] = 0.9
+        self.mhe.bounds['lower', '_p_est', 'Cr2'] = 0.0#0.1
+        # self.mhe.bounds['upper', '_p_est', 'Cr2'] = 0.25
+        #
+        self.mhe.bounds['lower', '_p_est', 'Cr0'] = 0.0#0.6
+        # self.mhe.bounds['upper', '_p_est', 'Cr0'] = 0.9
 
 
 
         self.mhe.setup()
 
         self.mhe.x0 = self.states
-        # C1&2, Cm1&2, Cr2, Cr0
-        self.mhe.p_est0 = np.array([0.5, 1.428, 12, 2.5, 0.6, 0.1]).reshape(-1, 1)
+        # C1, Cm1&2, Cr2, Cr0
+        self.mhe.p_est0 = np.array([0.5, 12, 2.5, 0.6, 0.1]).reshape(-1, 1)
         self.mhe.set_initial_guess()
 
     def state_initialization(self):
@@ -179,9 +181,12 @@ class MHE_MPC():
         # this we use as the origin to calculate the distance from this until the end
         self.initial_GPS_lon = lon_GPS
         self.initial_GPS_lat = lat_GPS
+        self.previous_GPS_lon = lon_GPS
+        self.previous_GPS_lat = lat_GPS
 
+        self.initial_heading = yaw
         # we assume that the velocity is zero in the beginning
-        self.states = np.array([0.0, 0.0, yaw, 0.0]).reshape(-1, 1)
+        self.states = np.array([0.0, 0.0, 0.0, 0.0]).reshape(-1, 1)
 
     def MHE(self):
         pass
@@ -204,10 +209,14 @@ class MHE_MPC():
 
         self.data_counter += 1
         if self.initial_GPS_lon is None: # note, the following is provided in degree!
-            return np.array([lon_GPS, lat_GPS, yaw, steering_angle*0.6, throttle])
+            return np.array([lon_GPS, lat_GPS, yaw, steering_angle*(0.6), throttle])
         else: # we have to convert the degree to distance; the following gives us the distance in km
             dx, dy = GPS_deg2distance_XY(self.initial_GPS_lon, lon_GPS, self.initial_GPS_lat, lat_GPS)
-            return np.array([dx, dy, yaw, steering_angle * 0.6, throttle])
+            vel = GPS_deg2vel(self.previous_GPS_lon, lon_GPS, self.previous_GPS_lat, lat_GPS)
+            self.previous_GPS_lat = lat_GPS
+            self.previous_GPS_lon = lon_GPS
+
+            return np.array([dx, dy, yaw -self.initial_heading , vel, steering_angle * (0.6), throttle])
 
 
 if __name__ == '__main__':
@@ -220,4 +229,6 @@ if __name__ == '__main__':
         # bayad visualization ham barash bezaram dar vaghe ma simulator nemikhaym k model ro run kone! in tooye khode
         # MHE va MPC hast
         print(i)
-    input()
+
+    np.save(config.realworld_data_path+ 'estimated_states.npy', system.mhe.data._x)
+    np.save(config.realworld_data_path + 'estimated_parameters.npy', system.mhe.data._p)
