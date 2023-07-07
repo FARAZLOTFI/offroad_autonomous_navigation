@@ -1,9 +1,9 @@
 import os
 import shutil
 
-image_directory = '/home/farnoosh/rc_car/image_data_khalil/'
-label_directory = '/home/farnoosh/rc_car/annotations_khalil/'
-dataset_directory = '/home/farnoosh/offroad_autonomous_navigation/classifier/dataset'
+image_directory = '/usr/local/data/kvirji/offroad_navigation_dataset/images/'
+label_directory = '/usr/local/data/kvirji/offroad_navigation_dataset/annotations/'
+dataset_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/train/'
 
 for filename in os.listdir(image_directory):
     f = os.path.join(label_directory, filename.replace(filename[len(filename) - 3:], 'txt'))

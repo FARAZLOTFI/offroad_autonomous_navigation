@@ -28,8 +28,8 @@ def euler_from_quaternion(w, x, y, z):
     return [roll_x, pitch_y, yaw_z]  # in radians
 
 
-load_directory = '/home/farnoosh/rc_car/topic_data/'
-save_directory = '/home/farnoosh/rc_car/src/extract_dataset/plots/'
+load_directory = '/usr/local/data/kvirji/offroad_navigation_dataset/topics/'
+save_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/extract_dataset/plots/'
 bins = 50
 
 data_matrix = []
