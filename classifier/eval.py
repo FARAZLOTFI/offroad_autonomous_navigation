@@ -4,16 +4,19 @@ from torch.utils.data.sampler import SequentialSampler
 from torchvision import datasets, transforms, models
 from tqdm import tqdm
 from torch import nn
-from ignite.metrics.precision import Precision
-from ignite.metrics.recall import Recall
-from ignite.engine import Engine
+from ignite.metrics import Precision, Recall, ConfusionMatrix, Accuracy
 import numpy as np 
+from matplotlib import pyplot as plt 
+import cv2 
 
 data_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/'
 batch_size = 128
+label_names = ['Tree', 'Other Obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', 'Traversable Grass', 'Smooth Road', 'Wet Leaves']
+save_misclassified = False
 
 #model to load
-model_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/0/best.pt'
+model_dir = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/0/'
+model_fname = 'best.pt'
 
 #data transformation
 data_transforms = {
@@ -24,13 +27,20 @@ data_transforms = {
     ])
 }
 
+revert_normalize = transforms.Compose([ transforms.Normalize(mean = [ 0., 0., 0. ],
+                                                     std = [ 1/0.229, 1/0.224, 1/0.225 ]),
+                                transforms.Normalize(mean = [ -0.485, -0.456, -0.406 ],
+                                                     std = [ 1., 1., 1. ]),
+                               ])
+
 #create dataset
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_directory,x),
                                           data_transforms[x])
                   for x in ['test']}
 
-#lengths of the dataset
+#length of the dataset and number of classes
 N_test = len(image_datasets['test'])
+N_classes = len(image_datasets['test'].classes)
 
 #define sampler. for testing use a sequential sampler
 test_sampler = SequentialSampler(image_datasets['test'])
@@ -55,32 +65,18 @@ model.fc = nn.Sequential(
 model.to(device)
 
 #load model from checkpoint 
-checkpoint = torch.load(model_path, map_location=device)
+checkpoint = torch.load(os.path.join(model_dir, model_fname), map_location=device)
 model.load_state_dict(checkpoint['model_state_dict'])
 
-#define evaluators
-def eval_step(engine, batch):
-    return batch
-
-default_evaluator = Engine(eval_step)
-
-#precision
+#metrics
 precision = Precision(average=False, device=device)
-precision.attach(default_evaluator, "precision")
-
-#recall
 recall = Recall(average=False, device=device)
-recall.attach(default_evaluator, "recall")
-
-#f1
 F1 = precision * recall * 2 / (precision + recall)
-F1.attach(default_evaluator, "F1")
-
+cm = ConfusionMatrix(num_classes=N_classes)
+accuracy = Accuracy(device=device)
 
 #eval
 print("Starting evaluation on {}".format(device))
-test_labels = None
-test_outputs = None
 with torch.no_grad(): #dont calculate gradients for test set
     model.eval()    #set model to eval mode 
     for j, (features, labels) in enumerate(tqdm(test_loader)): 
@@ -88,23 +84,51 @@ with torch.no_grad(): #dont calculate gradients for test set
         labels = labels.to(device)
 
         outputs = model(features)   #run model on inputs
+        
+        #update metrics
+        precision.update((outputs,labels))
+        recall.update((outputs,labels))
+        F1.update((outputs,labels))
+        cm.update((outputs,labels))
+        accuracy.update((outputs,labels))
+
+        #save misclassified examples
+        if save_misclassified:
+            _, preds = torch.max(outputs,1)
+            idxs_mask = ((preds == labels) == False).nonzero()
+            for i in idxs_mask:
+                    cv_image = revert_normalize(features[i]).movedim(1,-1).detach().cpu().numpy().squeeze().copy()
+                    cv2.putText(cv_image, "Pred: {}, Actual: {}".format(label_names[preds[i]], label_names[labels[i]]), (10, 200), cv2.FONT_HERSHEY_PLAIN, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+                    cv2.imwrite(os.path.join(model_dir, 'misclassified/misclassified_{}_{}.png'.format(i.item(),j)), 255*cv_image)
                 
-        #store all outputs and labels to analyze precision, recall, and f1-score per epoch
-        if j == 0:
-            test_labels = labels
-            test_outputs = outputs
-        else:
-            test_labels = torch.cat((test_labels, labels))
-            test_outputs = torch.cat((test_outputs, outputs))
-    
-    #get test statistics 
-    state = default_evaluator.run([[test_outputs, test_labels]])
-    test_precision = state.metrics['precision']
-    test_recall = state.metrics['recall']
-    test_F1 = state.metrics['F1']
+    #compute test statistics 
+    precision = precision.compute().detach().cpu().numpy()
+    recall = recall.compute().detach().cpu().numpy()
+    F1 = F1.compute().detach().cpu().numpy()
+    cm = cm.compute().detach().cpu().numpy()
+    accuracy = accuracy.compute()
+
     np.set_printoptions(precision=4)
     print("------------------------------------- Results per class -------------------------------------")
-    print("Classes: [Tree, Other Obstacle, Human, Waterhole, Mud, Jump, Grass, Smooth Road, Wet Leaves]")
-    print("Precision: ", test_precision.detach().cpu().numpy())
-    print("Recall: ", test_recall.detach().cpu().numpy())
-    print("F1: ", test_F1.detach().cpu().numpy())
+    print("Classes: ", label_names)
+    print("Precision: ", precision)
+    print("Recall: ", recall)
+    print("F1: ", F1)
+    print("Accuracy: {:.4f}".format(accuracy))
+
+    fig, ax = plt.subplots(figsize=(16,16))
+    ax.matshow(cm, cmap=plt.cm.Greens)
+    ax.xaxis.set_ticks_position('bottom')
+    ax.set_xticks(np.arange(N_classes), label_names)
+    ax.set_yticks(np.arange(N_classes), label_names)
+
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(x=j, y=i,s=cm[i, j], va='center', ha='center', size='large')
+    
+    plt.xlabel('Predictions')
+    plt.ylabel('Ground Truth')
+    plt.title('Confusion Matrix')
+    plt.savefig(os.path.join(model_dir, 'confusion_matrix.png'))
+    print('Saved Confusion Matrix')
+

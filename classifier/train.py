@@ -4,14 +4,13 @@ from torch.utils.data.sampler import SequentialSampler, WeightedRandomSampler
 from torchvision import datasets, transforms, models
 from tqdm import tqdm
 from torch import nn, optim
-from ignite.metrics.precision import Precision
-from ignite.metrics.recall import Recall
-from ignite.engine import Engine
+from ignite.metrics import Precision, Recall, Loss, Accuracy
 import numpy as np 
 from matplotlib import pyplot as plt
+from torchsummary import summary
 
 data_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/'
-model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/0/'
+model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/1/'
 batch_size = 128
 epochs = 100
 
@@ -28,16 +27,11 @@ data_transforms = {
         transforms.Resize(size=(224,224)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(20),
-        transforms.ColorJitter(0.3, 0.2, 0.2, 0.1),  
+        transforms.ColorJitter(0.4, 0.4, 0.4, 0.4),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
     'val': transforms.Compose([
-        transforms.Resize(size=(224,224)),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ]),
-    'test': transforms.Compose([
         transforms.Resize(size=(224,224)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -84,6 +78,8 @@ model.fc = nn.Sequential(
 #send model to device
 model.to(device)
 
+summary(model, input_size=(3, 224, 224))
+
 #define loss function and optimizer. flexible to change
 loss_fn = nn.NLLLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.003)
@@ -102,14 +98,16 @@ if load_checkpoint:
     last_train_recall = checkpoint['train_recall'] 
     last_train_F1 = checkpoint['train_F1'] 
     last_train_loss = checkpoint['train_loss'] 
+    last_train_acc = checkpoint['train_acc'] 
     last_valid_precision = checkpoint['valid_precision']
     last_valid_recall = checkpoint['valid_recall'] 
     last_valid_F1 = checkpoint['valid_F1'] 
     last_valid_loss = checkpoint['valid_loss'] 
+    last_valid_acc = checkpoint['valid_acc'] 
     history = checkpoint['history']
     print("Loaded pretrained model")
-    print("Last Training Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}".format(last_epoch, last_train_loss, last_train_precision, last_train_recall, last_train_F1))
-    print("Last Valid Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}".format(last_epoch, last_valid_loss, last_valid_precision, last_valid_recall, last_valid_F1))
+    print("Last Training Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}, Accuracy: {:.4f}".format(last_epoch, last_train_loss, last_train_precision, last_train_recall, last_train_F1, last_train_acc))
+    print("Last Valid Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}, Accuracy: {:.4f}".format(last_epoch, last_valid_loss, last_valid_precision, last_valid_recall, last_valid_F1, last_valid_acc))
     best_F1 = last_valid_F1
 
 #analyze training batches
@@ -136,25 +134,32 @@ if analyze:
     plt.xlabel("Count")
     plt.show()
 
-#define evaluators
-def eval_step(engine, batch):
-    return batch
+#define metrics
+macro_precision = Precision(average=True, device=device) #precision
+macro_recall = Recall(average=True, device=device) #recall
+p = Precision(average=False, device=device)
+r = Recall(average=False, device=device)
+macro_F1 = (p * r * 2 / (p + r)).mean() #f1
+loss_metric = Loss(loss_fn)
+accuracy = Accuracy(device=device)
 
-default_evaluator = Engine(eval_step)
+#function to reset all metrics
+def reset_metrics():
+    macro_precision.reset()
+    macro_recall.reset()
+    macro_F1.reset()
+    loss_metric.reset()
+    accuracy.reset()
+    return
 
-#precision
-macro_precision = Precision(average=True, device=device)
-macro_precision.attach(default_evaluator, "macro_precision")
-
-#recall
-macro_recall = Recall(average=True, device=device)
-macro_recall.attach(default_evaluator, "macro_recall")
-
-#f1
-precision = Precision(average=False, device=device)
-recall = Recall(average=False, device=device)
-macro_F1 = (precision * recall * 2 / (precision + recall)).mean()
-macro_F1.attach(default_evaluator, "macro_F1")
+#function to update all metrics with batch data
+def update_metrics(outputs,labels):
+    macro_precision.update((outputs,labels))
+    macro_recall.update((outputs,labels))
+    macro_F1.update((outputs,labels))
+    loss_metric.update((outputs,labels))
+    accuracy.update((outputs,labels))
+    return
 
 #training loop
 print("Starting training for {} epochs on {}".format(epochs, device))
@@ -162,9 +167,10 @@ for epoch in range(last_epoch + 1, last_epoch + epochs + 1):
     print("Epoch: {}/{}".format(epoch, last_epoch + epochs))
 
     model.train()   #set model to training mode
-    train_loss = 0.0
-    train_labels = None
-    train_outputs = None
+
+    #reset metrics
+    reset_metrics()
+
     for i, (features, labels) in enumerate(tqdm(train_loader)):
         features = features.to(device)
         labels = labels.to(device)
@@ -172,29 +178,23 @@ for epoch in range(last_epoch + 1, last_epoch + epochs + 1):
         outputs = model(features)   #run model on inputs
         loss = loss_fn(outputs, labels)     #calculate loss between predictions and ground truth
         loss.backward()     #backpropagate loss
-        optimizer.step()    #update weights
-        train_loss += loss.item() * features.size(0)    #multiply loss by batch size and add it to running count of the training loss 
+        optimizer.step()    #update weights       
         
-        #store all outputs and labels to analyze precision, recall, and f1-score per epoch
-        if i == 0:
-            train_labels = labels
-            train_outputs = outputs
-        else:
-            train_labels = torch.cat((train_labels, labels))
-            train_outputs = torch.cat((train_outputs, outputs))
+        #update metrics
+        update_metrics(outputs, labels)
     
     #get training statistics 
-    state = default_evaluator.run([[train_outputs, train_labels]])
-    train_precision = state.metrics['macro_precision']
-    train_recall = state.metrics['macro_recall']
-    train_F1 = state.metrics['macro_F1']
-    avg_train_loss = train_loss/N_train #average loss per sample in training set
-    print("Training Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}".format(epoch, avg_train_loss, train_precision, train_recall, train_F1))
-    
+    train_precision = macro_precision.compute().detach().cpu().numpy()
+    train_recall = macro_recall.compute().detach().cpu().numpy()
+    train_F1 = macro_F1.compute().detach().cpu().numpy()
+    train_loss = loss_metric.compute()
+    train_acc = accuracy.compute()
+    print("Training Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}, Accuracy: {:.4f}".format(epoch, train_loss, train_precision, train_recall, train_F1, train_acc))
+       
+    #reset metrics
+    reset_metrics()
+
     #evaluate model on validation set
-    valid_loss = 0.0
-    valid_labels = None
-    valid_outputs = None
     with torch.no_grad(): #dont calculate gradients for validation set
         model.eval()    #set model to eval mode 
         for j, (features, labels) in enumerate(tqdm(val_loader)): 
@@ -203,26 +203,20 @@ for epoch in range(last_epoch + 1, last_epoch + epochs + 1):
 
             outputs = model(features)   #run model on inputs
             loss = loss_fn(outputs,labels)  #calculate loss between predictions and ground truth
-            valid_loss += loss.item() * features.size(0)    #multiply loss by batch size and add it to the running count of the validation loss
             
-            #store all outputs and labels to analyze precision, recall, and f1-score per epoch
-            if j == 0:
-                valid_labels = labels
-                valid_outputs = outputs
-            else:
-                valid_labels = torch.cat((valid_labels, labels))
-                valid_outputs = torch.cat((valid_outputs, outputs))
-        
+            #update metrics
+            update_metrics()
+
         #get valid statistics 
-        state = default_evaluator.run([[valid_outputs, valid_labels]])
-        valid_precision = state.metrics['macro_precision']
-        valid_recall = state.metrics['macro_recall']
-        valid_F1 = state.metrics['macro_F1']
-        avg_valid_loss = valid_loss/N_val #average loss per sample in validation set
-        print("Valid Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}".format(epoch, avg_valid_loss, valid_precision, valid_recall, valid_F1))
+        valid_precision = macro_precision.compute().detach().cpu().numpy()
+        valid_recall = macro_recall.compute().detach().cpu().numpy()
+        valid_F1 = macro_F1.compute().detach().cpu().numpy()
+        valid_loss = loss_metric.compute()
+        valid_acc = accuracy.compute()
+        print("Valid Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}, Accuracy: {:.4f}".format(epoch, valid_loss, valid_precision, valid_recall, valid_F1, valid_acc))
 
     #append to history
-    history.append([epoch, avg_train_loss, train_precision, train_recall, train_F1, avg_valid_loss, valid_precision, valid_recall, valid_F1])
+    history.append([epoch, train_loss, train_precision, train_recall, train_F1, train_acc, valid_loss, valid_precision, valid_recall, valid_F1, valid_acc])
     
     #save best model based on f1 score
     if valid_F1 >= best_F1: 
@@ -234,11 +228,13 @@ for epoch in range(last_epoch + 1, last_epoch + epochs + 1):
             'train_precision': train_precision, 
             'train_recall': train_recall, 
             'train_F1': train_F1, 
-            'train_loss': avg_train_loss,
+            'train_acc': train_acc, 
+            'train_loss': train_loss,
             'valid_precision': valid_precision, 
             'valid_recall': valid_recall, 
             'valid_F1': valid_F1, 
-            'valid_loss': avg_valid_loss,
+            'valid_acc': valid_acc, 
+            'valid_loss': valid_loss,
             'history': history
         }, os.path.join(model_save_path, 'best.pt'))
         best_F1 = valid_F1
@@ -251,18 +247,20 @@ for epoch in range(last_epoch + 1, last_epoch + epochs + 1):
         'train_precision': train_precision, 
         'train_recall': train_recall, 
         'train_F1': train_F1, 
-        'train_loss': avg_train_loss,
+        'train_acc': train_acc, 
+        'train_loss': train_loss,
         'valid_precision': valid_precision, 
         'valid_recall': valid_recall, 
         'valid_F1': valid_F1, 
-        'valid_loss': avg_valid_loss,
+        'valid_acc': valid_acc, 
+        'valid_loss': valid_loss,
         'history': history
     }, os.path.join(model_save_path, 'last.pt'))
 
 history = np.asarray(history)
 x = history[:,0].astype(int)
 plt.plot(x, history[:,1], label='Training')
-plt.plot(x, history[:,5], label='Validation')
+plt.plot(x, history[:,6], label='Validation')
 plt.title('Learning Curves')
 plt.ylabel('Negative log likelihood loss')
 plt.xlabel('Epoch')
@@ -271,7 +269,7 @@ plt.savefig(model_save_path + 'learning_curves.png')
 plt.clf()
 
 plt.plot(x, history[:,4], label='Training')
-plt.plot(x, history[:,8], label='Validation')
+plt.plot(x, history[:,9], label='Validation')
 plt.title('Macro F1-Scores')
 plt.ylabel('F1-score')
 plt.xlabel('Epoch')
