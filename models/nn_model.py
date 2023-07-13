@@ -81,12 +81,17 @@ class predictive_model_badgr(nn.Module):
             outputs.append(output)
         outputs = torch.stack(outputs)
         # we have to determine for instance some of these must be categories, while some might be regression
-        return outputs
+        return outputs[:,:,:-1], outputs[:,:,-1] # .softmax(dim=-1)
+
+    def training_phase_output(self, input_data):
+        input_image, input_actions = input_data
+        x = self.extract_features(input_image)
+        return self.predict_events(x,input_actions)
 
 if __name__ == '__main__':
     planning_horizon = 10
-    num_of_events = 8
-    batch_size = 4
+    num_of_events = 8 + 1  # one for regression
+    batch_size = 3
     action_dimension = 2
     predictive_model = predictive_model_badgr(planning_horizon, num_of_events, action_dimension)
     input_image = torch.rand((batch_size,3,128,72))

@@ -2,7 +2,7 @@ import numpy as np
 import math
 import sys
 import os
-import config
+import MHE_MPC.config as config
 rel_do_mpc_path = os.path.join('..','..')
 sys.path.append(rel_do_mpc_path)
 
@@ -18,7 +18,7 @@ def GPS_deg2vel(lon1,lon2,lat1,lat2, time_taken=0.2):
     dx = ((lon1 - lon2) * 40000 * np.cos((lat1 + lat2) * np.pi / 360) / 360)*1000
     dy = ((lat1 - lat2) * 40000 / 360)*1000
     vel = np.sqrt(dx**2 + dy**2)/time_taken
-    return vel**2, np.math.atan2(dy,dx)
+    return vel, np.math.atan2(dy,dx)
 
 def euler_from_quaternion(x, y, z, w):
     """
@@ -112,8 +112,8 @@ class MHE_MPC():
 
         slope_measured = self.model.set_meas('slope', Pitch, meas_noise=True)
 
-        steering_angle_measured = self.model.set_meas('steering_angle_meas', sigma, meas_noise=True)
-        throttle_measured = self.model.set_meas('throttle_meas', D, meas_noise=True)
+        steering_angle_measured = self.model.set_meas('steering_angle_meas', sigma, meas_noise=False)
+        throttle_measured = self.model.set_meas('throttle_meas', D, meas_noise=False)
 
         # model
         dX = V * np.cos(Sai + C1 * sigma)
@@ -143,7 +143,7 @@ class MHE_MPC():
         }
         self.mhe.set_param(**setup_mhe)
 
-        num_of_measurements = 7
+        num_of_measurements = 5
         num_of_states = 5
         num_of_parameters = 6
         P_v = np.eye(num_of_measurements)  # Covariance of the measurement noise
@@ -178,7 +178,7 @@ class MHE_MPC():
         mass = 10
         self.mhe.bounds['lower', '_p_est', 'mu_m'] = 0.3*mass
         self.mhe.bounds['upper', '_p_est', 'mu_m'] = 0.6*mass
-        # it has been identified as 6 consistently
+        # it has been identifiedV as 6 consistently
 
         self.mhe.setup()
 
@@ -190,7 +190,7 @@ class MHE_MPC():
     def state_initialization(self):
         # based on that we initiate our MHE model -> it needs to come from the first measurement
         lon_GPS, lat_GPS, yaw, pitch, steering_angle, throttle = self.measurement_update()
-        # this we use as the origin to calculate the distance from this until the end
+        # this we use as the origiVn to calculate the distance from this until the end
         self.initial_GPS_lon = lon_GPS
         self.initial_GPS_lat = lat_GPS
         self.previous_GPS_lon = lon_GPS
