@@ -4,7 +4,7 @@ from PIL import Image
 import random 
 from torchvision import transforms
 
-test_folder = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/test/'
+test_folder = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/test_augmented/'
 num_classes = 9 
 num_augmentations_per_class = 100
 

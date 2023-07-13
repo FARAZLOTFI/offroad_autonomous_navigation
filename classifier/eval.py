@@ -9,6 +9,8 @@ import numpy as np
 from matplotlib import pyplot as plt 
 import cv2 
 
+
+use_augmented = False
 data_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/'
 batch_size = 128
 label_names = ['Tree', 'Other Obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', 'Traversable Grass', 'Smooth Road', 'Wet Leaves']
@@ -34,19 +36,23 @@ revert_normalize = transforms.Compose([ transforms.Normalize(mean = [ 0., 0., 0.
                                ])
 
 #create dataset
+if use_augmented:
+    test_set = 'test_augmented'
+else:
+    test_set = 'test'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_directory,x),
                                           data_transforms[x])
-                  for x in ['test']}
+                  for x in [test_set]}
 
 #length of the dataset and number of classes
-N_test = len(image_datasets['test'])
-N_classes = len(image_datasets['test'].classes)
+N_test = len(image_datasets[test_set])
+N_classes = len(image_datasets[test_set].classes)
 
 #define sampler. for testing use a sequential sampler
-test_sampler = SequentialSampler(image_datasets['test'])
+test_sampler = SequentialSampler(image_datasets[test_set])
 
 #define data loader
-test_loader = torch.utils.data.DataLoader(image_datasets['test'], sampler=test_sampler, batch_size=batch_size)
+test_loader = torch.utils.data.DataLoader(image_datasets[test_set], sampler=test_sampler, batch_size=batch_size)
 
 #load pretrained model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -99,7 +105,7 @@ with torch.no_grad(): #dont calculate gradients for test set
             for i in idxs_mask:
                     cv_image = revert_normalize(features[i]).movedim(1,-1).detach().cpu().numpy().squeeze().copy()
                     cv2.putText(cv_image, "Pred: {}, Actual: {}".format(label_names[preds[i]], label_names[labels[i]]), (10, 200), cv2.FONT_HERSHEY_PLAIN, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
-                    cv2.imwrite(os.path.join(model_dir, 'misclassified/misclassified_{}_{}.png'.format(i.item(),j)), 255*cv_image)
+                    cv2.imwrite(os.path.join(model_dir, 'misclassified_{}/misclassified_{}_{}.png'.format(test_set, i.item(),j)), 255*cv_image)
                 
     #compute test statistics 
     precision = precision.compute().detach().cpu().numpy()
@@ -109,7 +115,7 @@ with torch.no_grad(): #dont calculate gradients for test set
     accuracy = accuracy.compute()
 
     np.set_printoptions(precision=4)
-    print("------------------------------------- Results per class -------------------------------------")
+    print("------------------------------------- Results per class on {} set-------------------------------------".format(test_set))
     print("Classes: ", label_names)
     print("Precision: ", precision)
     print("Recall: ", recall)
@@ -129,6 +135,6 @@ with torch.no_grad(): #dont calculate gradients for test set
     plt.xlabel('Predictions')
     plt.ylabel('Ground Truth')
     plt.title('Confusion Matrix')
-    plt.savefig(os.path.join(model_dir, 'confusion_matrix.png'))
+    plt.savefig(os.path.join(model_dir, 'confusion_matrix_{}.png'.format(test_set)))
     print('Saved Confusion Matrix')
 

@@ -10,13 +10,13 @@ from matplotlib import pyplot as plt
 from torchsummary import summary
 
 data_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/'
-model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/1/'
-batch_size = 128
-epochs = 100
+model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/2/'
+batch_size = 256
+epochs = 200
 
 #to load from checkpoint
 load_checkpoint = False
-checkpoint_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/0/last.pt'
+checkpoint_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/2/last.pt'
 
 #set to true to analyze sample distribution per batch and view image augmentations
 analyze = False
@@ -27,7 +27,8 @@ data_transforms = {
         transforms.Resize(size=(224,224)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(20),
-        transforms.ColorJitter(0.3, 0.2, 0.2, 0.1),          
+        transforms.ColorJitter(0.4, 0.3, 0.3, 0.3),   
+        transforms.GaussianBlur(kernel_size=(9,9)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
@@ -131,7 +132,6 @@ if analyze:
     plt.bar(cls, np.mean(label_counts_per_batch, axis=0), yerr=np.std(label_counts_per_batch, axis=0) )
     plt.title("Average distribution of samples per batch")
     plt.ylabel("Number of samples")
-    plt.xlabel("Count")
     plt.show()
 
 #define metrics
@@ -184,9 +184,9 @@ for epoch in range(last_epoch + 1, last_epoch + epochs + 1):
         update_metrics(outputs, labels)
     
     #get training statistics 
-    train_precision = macro_precision.compute().detach().cpu().numpy()
-    train_recall = macro_recall.compute().detach().cpu().numpy()
-    train_F1 = macro_F1.compute().detach().cpu().numpy()
+    train_precision = macro_precision.compute()
+    train_recall = macro_recall.compute()
+    train_F1 = macro_F1.compute().item()
     train_loss = loss_metric.compute()
     train_acc = accuracy.compute()
     print("Training Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}, Accuracy: {:.4f}".format(epoch, train_loss, train_precision, train_recall, train_F1, train_acc))
@@ -205,12 +205,12 @@ for epoch in range(last_epoch + 1, last_epoch + epochs + 1):
             loss = loss_fn(outputs,labels)  #calculate loss between predictions and ground truth
             
             #update metrics
-            update_metrics()
+            update_metrics(outputs,labels)
 
         #get valid statistics 
-        valid_precision = macro_precision.compute().detach().cpu().numpy()
-        valid_recall = macro_recall.compute().detach().cpu().numpy()
-        valid_F1 = macro_F1.compute().detach().cpu().numpy()
+        valid_precision = macro_precision.compute()
+        valid_recall = macro_recall.compute()
+        valid_F1 = macro_F1.compute().item()
         valid_loss = loss_metric.compute()
         valid_acc = accuracy.compute()
         print("Valid Stats: Epoch {}, Loss: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1: {:.4f}, Accuracy: {:.4f}".format(epoch, valid_loss, valid_precision, valid_recall, valid_F1, valid_acc))
