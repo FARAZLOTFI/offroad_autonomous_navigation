@@ -183,7 +183,7 @@ class MHE_MPC():
         self.mhe.setup()
 
         self.mhe.x0 = self.states
-        # C1, Cm1&2, Cr2, Cr0
+        # C1, Cm1&2, Cr2, Cr0, m*mu
         self.mhe.p_est0 = np.array([0.5, 12, 2.5, 0.15, 0.7, 4.0]).reshape(-1, 1)
         self.mhe.set_initial_guess()
 

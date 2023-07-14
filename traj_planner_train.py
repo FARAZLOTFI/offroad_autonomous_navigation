@@ -209,8 +209,8 @@ if __name__ == "__main__":
 
     BATCH_SIZE = 128
     epochs = range(last_epoch,300)
-    train_iterations = 1500#int(len(train_images_list)/batch_size)
-    validation_iterations = 500#int(len(val_images_list)/batch_size)
+    train_iterations = int(len(train_images_list)/BATCH_SIZE)
+    validation_iterations = int(len(val_images_list)/BATCH_SIZE)
     for param in model.parameters():
         param.requires_grad = True
     # clear the gradients
@@ -240,7 +240,7 @@ if __name__ == "__main__":
         
         for i in range(validation_iterations):
             inputs, true_outputs = input_preparation(val_images_list, path_to_images, val_topics_list, path_to_topics,
-                                               val_classes_list, path_to_annotations, planning_horizon)
+                                               val_classes_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE)
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
             # calculate loss
