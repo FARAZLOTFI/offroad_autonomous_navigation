@@ -76,7 +76,7 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
                 file_number = int(topics_list[item + i][-8:-4])
             else:
                 if not(int(topics_list[item + i][-8:-4]) - file_number == 1):
-                    print('Rosbag changed!!!')
+                    #print('Rosbag changed!!!')
                     flag_bag_changed = True
                     break  # if the rosbag is changed we need to skip the sample as it's not a proper one
                 else:
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # if not(isFile):
     #     os.mkdir('trained_model')
 
-    CHECKPOINT_PATH = '/home/barbados/checkpoint_weights_planner_July12/training_checkpoint'
+    CHECKPOINT_PATH = config.model_checkpoint+'training_checkpoint'
 
     if(load_from_checkpoint):
         try:        
@@ -174,8 +174,8 @@ if __name__ == "__main__":
     else:
         last_epoch = 0
     # Writer will output to ./runs/ directory by default
-    writer_train = SummaryWriter('/home/barbados/traj_planner_training_logs/runs/training')
-    writer_val = SummaryWriter('/home/barbados/traj_planner_training_logs/runs/validation')
+    writer_train = SummaryWriter(config.training_logfiles+'traj_planner_training_logs/runs/training')
+    writer_val = SummaryWriter(config.training_logfiles+'traj_planner_training_logs/runs/validation')
 
     other_train_writers = []
     other_val_writers = []
@@ -183,8 +183,8 @@ if __name__ == "__main__":
     monitored_terms_count = 2
 
     for ii in range(monitored_terms_count):
-        other_train_writers.append(SummaryWriter('/home/barbados/traj_planner_training_logs/runs/'+'train_loss_term'+str(ii)))
-        other_val_writers.append(SummaryWriter('/home/barbados/traj_planner_training_logs/runs/'+'val_loss_term'+str(ii)))
+        other_train_writers.append(SummaryWriter(config.training_logfiles+'traj_planner_training_logs/runs/'+'train_loss_term'+str(ii)))
+        other_val_writers.append(SummaryWriter(config.training_logfiles+'traj_planner_training_logs/runs/'+'val_loss_term'+str(ii)))
 
     path_to_images = config.path_to_dataset+'images/'
     path_to_topics = config.path_to_dataset+'topics/'
