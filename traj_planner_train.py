@@ -90,7 +90,7 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
                 measurements = load_topic_file(topic_file, gps_data)
                 gps_data = measurements[:2]
                 # note that we ignore the current orientation, we need the future ones
-                set_of_orientations.append(measurements[2])
+                set_of_orientations.append(measurements[2]/np.pi)
                 # also the event/class of the future samples
                 class_file = classes_path + classes_list[item + i]
                 with open(class_file) as f:
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     load_from_checkpoint = False
 
-    planning_horizon = 15
+    planning_horizon = 5
     num_of_events = 9 + 1
     action_dimension = 2
     model = predictive_model_badgr(planning_horizon, num_of_events, action_dimension)

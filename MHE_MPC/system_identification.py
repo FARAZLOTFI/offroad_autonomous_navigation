@@ -119,7 +119,7 @@ class MHE_MPC():
         dX = V * np.cos(Sai + C1 * sigma)
         dY = V * np.sin(Sai + C1 * sigma)
         dSai = V * sigma * C2
-        dV = (Cm1 - Cm2 * V * np.sign(V)) * D - ((Cr2 * V ** 2 + Cr0) + (V * sigma)**2 * (C2 * C1 ** 2)) - \
+        dV = (Cm1 - Cm2 * V ) * D - ((Cr2 * V ** 2 + Cr0) + (V * sigma)**2 * (C2 * C1 ** 2)) - \
              mu_m*g_*np.sin(Pitch)
 
         # The API does not support static augmentation, hence, I am using this simplified version
@@ -203,23 +203,28 @@ class MHE_MPC():
     def MHE(self):
         pass
 
-    def measurement_update(self):
-        file_path = self.topic_data_folder_path + self.topic_data_list[self.data_counter]
-        file_number = int(float(file_path[-8:-4]))
-        if self.previous_file_number is not None:
-            if file_number - self.previous_file_number == 1:  # TODO this should be used
-                flag_new_rosbag = False
-            else:
-                flag_new_rosbag = True
+    def measurement_update(self, offline_mode=True):
 
-        self.previous_file_number = file_number
-        # the order of the data is: steering angle, throttle, w, x, y, z, Lon, lat,
-        # then, timestamps for the image, depth, teensy, imu, and gps topics
-        loaded_data = np.load(file_path)
-        steering_angle, throttle, w, x, y, z, lon_GPS, lat_GPS = loaded_data[:8]
+        if offline_mode:
+            file_path = self.topic_data_folder_path + self.topic_data_list[self.data_counter]
+            file_number = int(float(file_path[-8:-4]))
+            if self.previous_file_number is not None:
+                if file_number - self.previous_file_number == 1:  # TODO this should be used
+                    flag_new_rosbag = False
+                else:
+                    flag_new_rosbag = True
+
+            self.previous_file_number = file_number
+            # the order of the data is: steering angle, throttle, w, x, y, z, Lon, lat,
+            # then, timestamps for the image, depth, teensy, imu, and gps topics
+            loaded_data = np.load(file_path)
+            steering_angle, throttle, w, x, y, z, lon_GPS, lat_GPS = loaded_data[:8]
+            self.data_counter += 1
+        else:
+            pass
+
         roll, pitch, yaw = euler_from_quaternion(x, y, z, w)
         pitch = -pitch
-        self.data_counter += 1
         if self.initial_GPS_lon is None:
             # note, the following is provided in degree! also we don't have vel as
             # at this point there is only one GPS point available
@@ -233,7 +238,7 @@ class MHE_MPC():
             self.bearing = dbearing
             error = (yaw + 3.02) - dbearing
 
-            return np.array([dx, dy, dbearing, vel, pitch, steering_angle * (-0.6), throttle]), yaw
+            return np.array([dx, dy, dbearing, vel, pitch, steering_angle * (-0.6), throttle])#, yaw
 
 
 if __name__ == '__main__':
@@ -241,8 +246,8 @@ if __name__ == '__main__':
     angle_list = []
     # now the main loop
     for i in range(len(system.topic_data_list) - 1):
-        y0, yaw = system.measurement_update()
-        angle_list.append([y0[2],yaw,y0[5]])
+        y0 = system.measurement_update()
+        #angle_list.append([y0[2],yaw,y0[5]])
         x0 = system.mhe.make_step(y0)
 
     np.save(config.realworld_data_path+ 'estimated_states.npy', system.mhe.data._x)
