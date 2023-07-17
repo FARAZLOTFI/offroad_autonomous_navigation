@@ -39,7 +39,7 @@ class image_based_planner():
 
     def objective(self, actions):
         # the input must be filtered
-        self.actions[:,0,0] = torch.tanh(actions)
+        self.actions[:,0,0] = torch.tanh(actions)*(-0.6)
         ##########################################
         events, bearings = self.predictive_model.predict_events(self.image_embedding, self.actions)
 
