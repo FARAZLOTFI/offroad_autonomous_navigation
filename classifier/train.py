@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from torchsummary import summary
 
 data_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/'
-model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/2/'
+model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/3_r18_gauss/'
 batch_size = 256
 epochs = 200
 
@@ -27,8 +27,8 @@ data_transforms = {
         transforms.Resize(size=(224,224)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(20),
-        transforms.ColorJitter(0.4, 0.3, 0.3, 0.3),   
-        transforms.GaussianBlur(kernel_size=(9,9)),
+        transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),   
+        transforms.GaussianBlur(kernel_size=(15,15), sigma=(1e-10,2)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),

@@ -12,17 +12,23 @@ import cv2
 
 use_augmented = False
 data_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/'
-batch_size = 128
+batch_size = 256
 label_names = ['Tree', 'Other Obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', 'Traversable Grass', 'Smooth Road', 'Wet Leaves']
 save_misclassified = False
 
 #model to load
-model_dir = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/0/'
+model_dir = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/1_r50_gauss/'
 model_fname = 'best.pt'
+
+#create dataset
+if use_augmented:
+    test_set = 'test_augmented'
+else:
+    test_set = 'test'
 
 #data transformation
 data_transforms = {
-    'test': transforms.Compose([
+    test_set: transforms.Compose([
         transforms.Resize(size=(224,224)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -35,11 +41,6 @@ revert_normalize = transforms.Compose([ transforms.Normalize(mean = [ 0., 0., 0.
                                                      std = [ 1., 1., 1. ]),
                                ])
 
-#create dataset
-if use_augmented:
-    test_set = 'test_augmented'
-else:
-    test_set = 'test'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_directory,x),
                                           data_transforms[x])
                   for x in [test_set]}
@@ -56,7 +57,7 @@ test_loader = torch.utils.data.DataLoader(image_datasets[test_set], sampler=test
 
 #load pretrained model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = models.resnet50(weights='ResNet50_Weights.DEFAULT')
+model = models.resnet50(weights='ResNet50_Weights.DEFAULT') #change model based on which checkpoint you are loading
 
 #last layer - flexible to change this 
 model.fc = nn.Sequential(
@@ -77,7 +78,7 @@ model.load_state_dict(checkpoint['model_state_dict'])
 #metrics
 precision = Precision(average=False, device=device)
 recall = Recall(average=False, device=device)
-F1 = precision * recall * 2 / (precision + recall)
+F1 = (precision * recall * 2 / (precision + recall))
 cm = ConfusionMatrix(num_classes=N_classes)
 accuracy = Accuracy(device=device)
 

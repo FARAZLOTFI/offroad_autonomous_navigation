@@ -11,8 +11,8 @@ num_augmentations_per_class = 100
 augment = transforms.Compose([ 
     transforms.RandomHorizontalFlip(p=0.7),
     transforms.RandomRotation(20),
-    transforms.ColorJitter(0.4, 0.3, 0.3, 0.3),      
-    transforms.GaussianBlur(kernel_size=(9,9)),
+    transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),      
+    transforms.GaussianBlur(kernel_size=(15,15), sigma=(1e-10,2)),
     ])
 
 for i in range(num_classes):
