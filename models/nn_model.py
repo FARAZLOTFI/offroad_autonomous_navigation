@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 
 class predictive_model_badgr(nn.Module):
-    def __init__(self, planning_horizon, num_of_events, action_dimension):
+    def __init__(self, planning_horizon, num_of_events, action_dimension, shared_mlps = True):
         # the architecture in brief:
         # three CNN layers with RELU activation fcn
         # + 4 fully connected_layer
@@ -33,17 +33,39 @@ class predictive_model_badgr(nn.Module):
         self.control_action_mlps_layer1 = []
         self.control_action_mlps_layer2 = []
         # last fully connected layer
-        self.MLP_last_layers = []
-        for i in range(planning_horizon):
-            self.control_action_mlps_layer1.append(nn.Linear(action_dimension,32))
-            self.control_action_mlps_layer2.append(nn.Linear(32,32))
-            # last fully connected layer
-            self.MLP_last_layers.append(nn.Linear(128, num_of_events))
+        self.MLP_last_layers1 = []
+        self.MLP_last_layers2 = []
+        self.MLP_last_layers3 = []
+
+        if shared_mlps:
+            linear_layer1 = nn.Linear(action_dimension, 32)
+            linear_layer2 = nn.Linear(32, 32)
+            output_linear_layer1 = nn.Linear(128, 64)
+            output_linear_layer2 = nn.Linear(64, 32)
+            output_linear_layer3 = nn.Linear(32, num_of_events)
+
+            for i in range(planning_horizon):
+                self.control_action_mlps_layer1.append(linear_layer1)
+                self.control_action_mlps_layer2.append(linear_layer2)
+                # last fully connected layer
+                self.MLP_last_layers1.append(output_linear_layer1)
+                self.MLP_last_layers2.append(output_linear_layer2)
+                self.MLP_last_layers3.append(output_linear_layer3)
+        else:
+            for i in range(planning_horizon):
+                self.control_action_mlps_layer1.append(nn.Linear(action_dimension,32))
+                self.control_action_mlps_layer2.append(nn.Linear(32,32))
+                # last fully connected layer
+                self.MLP_last_layers1.append(nn.Linear(128, 64))
+                self.MLP_last_layers2.append(nn.Linear(64, 32))
+                self.MLP_last_layers3.append(nn.Linear(32, num_of_events))
 
         # make torch lists
         self.control_action_mlps_layer1 = nn.ModuleList(self.control_action_mlps_layer1)
         self.control_action_mlps_layer2 = nn.ModuleList(self.control_action_mlps_layer2)
-        self.MLP_last_layers = nn.ModuleList(self.MLP_last_layers)
+        self.MLP_last_layers1 = nn.ModuleList(self.MLP_last_layers1)
+        self.MLP_last_layers2 = nn.ModuleList(self.MLP_last_layers2)
+        self.MLP_last_layers3 = nn.ModuleList(self.MLP_last_layers3)
         # LSTM network takes a set of actions and predicts the corresponding events that might happen
         self.LSTM_network = nn.LSTM(input_size=32, hidden_size=128)
 
@@ -67,7 +89,7 @@ class predictive_model_badgr(nn.Module):
         processed_actions = []
         predicted_output = torch.rand(self.planning_horizon)
         for i,action in zip(range(self.planning_horizon),actions):
-            processed_action = self.control_action_mlps_layer1[i](action)
+            processed_action = F.relu(self.control_action_mlps_layer1[i](action))
             processed_action = self.control_action_mlps_layer2[i](processed_action)
             processed_actions.append(processed_action)
 
@@ -77,7 +99,9 @@ class predictive_model_badgr(nn.Module):
 
         outputs = []
         for i in range(self.planning_horizon):
-            output = self.MLP_last_layers[i](x[i])
+            output = self.MLP_last_layers1[i](x[i])
+            output = F.relu(self.MLP_last_layers2[i](output))
+            output = self.MLP_last_layers3[i](output)
             outputs.append(output)
         outputs = torch.stack(outputs)
         # we have to determine for instance some of these must be categories, while some might be regression

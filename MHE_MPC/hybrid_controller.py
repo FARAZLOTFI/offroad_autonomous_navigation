@@ -1,5 +1,5 @@
 from evotorch import Problem
-from evotorch.algorithms import SNES
+from evotorch.algorithms import SNES, CEM, CMAES
 from evotorch.logging import StdOutLogger, PandasLogger
 import torch
 from models.nn_model import predictive_model_badgr
@@ -23,6 +23,7 @@ class image_based_planner():
             "min",
             self.objective,
             initial_bounds=(-1, 1),
+            bounds=(-1 ,1),
             device="cuda:0" if torch.cuda.is_available() else "cpu",
             solution_length=planning_horizon,
             # Higher-than-default precision
@@ -30,7 +31,7 @@ class image_based_planner():
         )
 
         # Create a SearchAlgorithm instance to optimise the Problem instance
-        self.searcher = SNES(problem, stdev_init=1)
+        self.searcher = CMAES(problem, popsize=20, stdev_init=0)
 
         # Create loggers as desired
         self.stdout_logger = StdOutLogger(self.searcher)  # Status printed to the stdout
@@ -59,7 +60,7 @@ class image_based_planner():
 
         uncertainties = torch.zeros(self.planning_horizon).cuda()
         # Run the algorithm for as many iterations as desired
-        self.searcher.run(10) #TODO actions !!!
+        self.searcher.run(5) #TODO actions !!!
         #self.searcher.status['pop_best'].values.detach().cpu().numpy()
         # progress = self.pandas_logger.to_dataframe()
         # progress.mean_eval.plot()  # Display a graph of the evolutionary progress by using the pandas data frame
@@ -76,6 +77,7 @@ class rc_car_model:
         self.mu_m = torch.tensor(4.0)
         self.g_ = torch.tensor(9.81)
         self.dt = torch.tensor(0.2)
+
         # the states initialization; we always assume that we've started from zero; then it's ok to add the
         # initial real world pose to the states to end up finding the realworld pose
         # self.X = 0
@@ -89,12 +91,11 @@ class rc_car_model:
         self.C1,self.Cm1, self.Cm2, self.Cr2, self.Cr0, self.mu_m = torch.tensor(updated_parameters, dtype=torch.float32).cuda()
 
     def step(self, X, Y, Sai, V, Pitch, sigma, forward_throttle):
-        X = V * torch.cos(Sai + self.C1 * sigma)
-        Y = V * torch.sin(Sai + self.C1 * sigma)
-        Sai = V * sigma * self.C2
-        V = (self.Cm1 - self.Cm2 * V ) * forward_throttle - ((self.Cr2 * V ** 2 + self.Cr0) +
-                                                                          (V * sigma)**2 * (self.C2 * self.C1 ** 2)) - \
-                                                                            self.mu_m*self.g_*torch.sin(Pitch)
+        X = (V * torch.cos(Sai + self.C1 * sigma))*self.dt + X
+        Y = (V * torch.sin(Sai + self.C1 * sigma))*self.dt + Y
+        Sai = (V * sigma * self.C2)*self.dt + Sai
+        V = ((self.Cm1 - self.Cm2 * V ) * forward_throttle - ((self.Cr2 * V ** 2 + self.Cr0) + \
+                    (V * sigma)**2 * (self.C2 * self.C1 ** 2)) - self.mu_m*self.g_*torch.sin(Pitch))*self.dt + V
         Pitch = Pitch # static
         return X, Y, Sai, V, Pitch
 
@@ -125,6 +126,7 @@ class planner:
             "min",
             self.MPC_cost,
             initial_bounds=(-1, 1),
+            bounds=(-1, 1),
             device="cuda:0" if torch.cuda.is_available() else "cpu",
             solution_length=self.receding_horizon,
             # Higher-than-default precision
@@ -132,7 +134,7 @@ class planner:
         )
 
         # Create a SearchAlgorithm instance to optimise the Problem instance
-        self.searcher = SNES(problem, stdev_init=1)
+        self.searcher = CMAES(problem, popsize=20, stdev_init=0)
 
         # Create loggers as desired
         self.stdout_logger = StdOutLogger(self.searcher)  # Status printed to the stdout
@@ -147,7 +149,7 @@ class planner:
 
         # Now given the set of throttles the following step would be done
         set_of_steering_angles, uncertainties = self.steering_angle_planner.optimization_step()
-        loss = torch.tensor([0],dtype=torch.float32).cuda()
+        loss = torch.zeros(self.receding_horizon).cuda()#torch.tensor([0],dtype=torch.float32).cuda()
         for i in range(self.receding_horizon):
             states = self.system_model.step(*states, set_of_steering_angles[i], set_of_throttles[i])
             # states_error = theta_ref - states[2]
@@ -168,9 +170,9 @@ class planner:
             coef_vel = torch.tensor([1],dtype=torch.float32).cuda()
             coef_uncertainty = torch.tensor([10],dtype=torch.float32).cuda()
             # maximizing the velocity, minimizing the uncertainty
-
-            loss += coef_vel/torch.tensor((states[3]**2).detach().cpu().numpy(),dtype=torch.float32).cuda() + coef_uncertainty*uncertainties[i]
-        return loss
+            # coef_vel/torch.tensor((states[3]**2).detach().cpu().numpy(),dtype=torch.float32).cuda() + coef_uncertainty*uncertainties[i]
+            loss[i] = coef_vel/(states[3]**2 + 1) + coef_uncertainty*uncertainties[i]
+        return loss.sum()
     def plan(self, current_image):
         observations = self.estimation_algorithm.measurement_update()
         # update the states
@@ -180,13 +182,13 @@ class planner:
         # Now process the image
         self.steering_angle_planner.image_embedding = self.steering_angle_planner.predictive_model.extract_features(current_image)
 
-        self.searcher.run(10)
+        self.searcher.run(5)
         return self.searcher.status['pop_best'].values
 
 if __name__ == '__main__':
     current_image = torch.rand((1, 3, 128, 72))
 
-    main_planner = planner(5)
+    main_planner = planner(8)
 
     main_planner.plan(current_image)
     #steering_angle_planner = image_based_planner()
