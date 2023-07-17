@@ -22,7 +22,7 @@ class image_based_planner():
         problem = Problem(
             "min",
             self.objective,
-            initial_bounds=(-1, 1),
+            initial_bounds=(0, 0),
             bounds=(-1 ,1),
             device="cuda:0" if torch.cuda.is_available() else "cpu",
             solution_length=planning_horizon,
@@ -31,15 +31,16 @@ class image_based_planner():
         )
 
         # Create a SearchAlgorithm instance to optimise the Problem instance
-        self.searcher = CMAES(problem, popsize=20, stdev_init=0)
+        self.searcher = CMAES(problem, popsize=10, stdev_init=1)
 
         # Create loggers as desired
         self.stdout_logger = StdOutLogger(self.searcher)  # Status printed to the stdout
         self.pandas_logger = PandasLogger(self.searcher)  # Status stored in a Pandas dataframe
 
     def objective(self, actions):
-        # the output would be the probabilities and regression output
-        self.actions[:,0,0] = actions
+        # the input must be filtered
+        self.actions[:,0,0] = torch.tanh(actions)
+        ##########################################
         events, bearings = self.predictive_model.predict_events(self.image_embedding, self.actions)
 
         loss = torch.tensor(0,dtype=torch.float32).cuda()
@@ -60,7 +61,7 @@ class image_based_planner():
 
         uncertainties = torch.zeros(self.planning_horizon).cuda()
         # Run the algorithm for as many iterations as desired
-        self.searcher.run(5) #TODO actions !!!
+        self.searcher.run(10) #TODO actions !!!
         #self.searcher.status['pop_best'].values.detach().cpu().numpy()
         # progress = self.pandas_logger.to_dataframe()
         # progress.mean_eval.plot()  # Display a graph of the evolutionary progress by using the pandas data frame
@@ -91,6 +92,8 @@ class rc_car_model:
         self.C1,self.Cm1, self.Cm2, self.Cr2, self.Cr0, self.mu_m = torch.tensor(updated_parameters, dtype=torch.float32).cuda()
 
     def step(self, X, Y, Sai, V, Pitch, sigma, forward_throttle):
+        sigma = torch.tanh(sigma)*(-0.6)
+        forward_throttle = (torch.tanh(forward_throttle) +0.5)/1.5 # -0.33 ~ 1 not to maximize the speed on the reverse side
         X = (V * torch.cos(Sai + self.C1 * sigma))*self.dt + X
         Y = (V * torch.sin(Sai + self.C1 * sigma))*self.dt + Y
         Sai = (V * sigma * self.C2)*self.dt + Sai
@@ -125,7 +128,7 @@ class planner:
         problem = Problem(
             "min",
             self.MPC_cost,
-            initial_bounds=(-1, 1),
+            initial_bounds=(0, 0),
             bounds=(-1, 1),
             device="cuda:0" if torch.cuda.is_available() else "cpu",
             solution_length=self.receding_horizon,
@@ -134,7 +137,7 @@ class planner:
         )
 
         # Create a SearchAlgorithm instance to optimise the Problem instance
-        self.searcher = CMAES(problem, popsize=20, stdev_init=0)
+        self.searcher = CMAES(problem, popsize=10, stdev_init=1)
 
         # Create loggers as desired
         self.stdout_logger = StdOutLogger(self.searcher)  # Status printed to the stdout
@@ -182,8 +185,15 @@ class planner:
         # Now process the image
         self.steering_angle_planner.image_embedding = self.steering_angle_planner.predictive_model.extract_features(current_image)
 
-        self.searcher.run(5)
+        self.searcher.run(10)
+        self.debug_(self.steering_angle_planner.searcher.status['pop_best'].values, self.searcher.status['pop_best'].values)
         return self.searcher.status['pop_best'].values
+
+    def debug_(self, set_of_steering_angles, set_of_throttles):
+        states = self.system_model.states
+        for i in range(self.receding_horizon):
+            states = self.system_model.step(*states, set_of_steering_angles[i], set_of_throttles[i])
+            print('Action: ',[set_of_steering_angles[i].detach().cpu(),set_of_throttles[i].detach().cpu()],' *states: ', states)
 
 if __name__ == '__main__':
     current_image = torch.rand((1, 3, 128, 72))
