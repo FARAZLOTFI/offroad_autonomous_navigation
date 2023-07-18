@@ -10,7 +10,7 @@ import numpy as np
 
 class PredictiveModelBadgr(nn.Module):
     def __init__(self, planning_horizon, num_event_types, action_dimension, 
-                 seq_model, shared_mlps=True):
+                 seq_model, n_seq_model_layers = 2, shared_mlps=True):
         # the architecture in brief:
         # three CNN layers with RELU activation fcn
         # + 4 fully connected_layer
@@ -135,7 +135,7 @@ class LSTMSeqModel(SeqModel):
             self.n_seq_model_layers, -1, 
             2 * action_embeddings.shape[-1])
         h_0, c_0 = torch.chunk(ext_feats, 2, dim=-1)
-        seq_embed, _ = self.LSTM_network(action_embeddings, (h_0, c_0))
+        seq_embed, _ = self.LSTM_network(action_embeddings, (h_0.contiguous(), c_0.contiguous()))
 
         return seq_embed
     

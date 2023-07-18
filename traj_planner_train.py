@@ -5,7 +5,7 @@ import sys
 import cv2
 import time
 import numpy as np
-from models.nn_model import PredictiveModelBadgr
+from models.nn_model import PredictiveModelBadgr, LSTMSeqModel
 import random
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
@@ -141,11 +141,14 @@ def total_loss(planning_horizon, nn_out, true_out):
 if __name__ == "__main__":
 
     load_from_checkpoint = False
-
     planning_horizon = 5
-    num_of_events = 9 + 1
+    num_event_types = 9 + 1  # one for regression
+    n_seq_model_layers = 4
+    seq_elem_dim = 16
     action_dimension = 2
-    model = PredictiveModelBadgr(planning_horizon, num_of_events, action_dimension)
+    seq_encoder = LSTMSeqModel(n_seq_model_layers, seq_elem_dim)
+    model = PredictiveModelBadgr(planning_horizon, num_event_types,
+                                            action_dimension, seq_encoder, n_seq_model_layers)
     model.cuda()
 
     #summary(model, (4, 320, 240))
