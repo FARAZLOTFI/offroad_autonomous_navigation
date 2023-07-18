@@ -2,7 +2,7 @@ from evotorch import Problem
 from evotorch.algorithms import SNES, CEM, CMAES
 from evotorch.logging import StdOutLogger, PandasLogger
 import torch
-from models.nn_model import predictive_model_badgr
+from models.nn_model import PredictiveModelBadgr
 import numpy as np
 from MHE_MPC.system_identification import MHE_MPC
 class image_based_planner():
@@ -14,7 +14,7 @@ class image_based_planner():
         self.planning_horizon = planning_horizon
         num_of_events = 3
         action_dimension = 2
-        self.predictive_model = predictive_model_badgr(planning_horizon, num_of_events, action_dimension)
+        self.predictive_model = PredictiveModelBadgr(planning_horizon, num_of_events, action_dimension)
         self.events_rewards = torch.tensor(np.array([-1, -1, -1]), dtype=torch.float32)
         self.image_embedding = None
         self.actions = torch.rand(planning_horizon, 1, action_dimension)

@@ -5,7 +5,7 @@ import sys
 import cv2
 import time
 import numpy as np
-from models.nn_model import predictive_model_badgr
+from models.nn_model import PredictiveModelBadgr
 import random
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     planning_horizon = 5
     num_of_events = 9 + 1
     action_dimension = 2
-    model = predictive_model_badgr(planning_horizon, num_of_events, action_dimension)
+    model = PredictiveModelBadgr(planning_horizon, num_of_events, action_dimension)
     model.cuda()
 
     #summary(model, (4, 320, 240))
