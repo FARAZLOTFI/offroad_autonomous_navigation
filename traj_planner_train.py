@@ -20,11 +20,13 @@ classification_criterion = torch.nn.CrossEntropyLoss().cuda()
 regression_criterion = torch.nn.MSELoss().cuda()
 
 augment = transforms.Compose([
+    transforms.ToPILImage(),
     transforms.Resize(size=image_size),
-    transforms.RandomHorizontalFlip(p=0.7),
-    transforms.RandomRotation(20),
-    transforms.ColorJitter(0.4, 0.3, 0.3, 0.3),
-    transforms.GaussianBlur(kernel_size=(9,9)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(10),
+    transforms.ColorJitter(0.2, 0.2, 0.2, 0),
+    # transforms.GaussianBlur(kernel_size=(9,9), sigma=(1e-10,2)), 
+    transforms.ToTensor()
     ])
 
 def load_topic_file(file_path, prev_gps_data):
@@ -59,7 +61,8 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
         file_number = None
         flag_bag_changed = False
         image = cv2.imread(images_path+images_list[item])
-        image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        # image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        
         # Now prepare the ground truths
         set_of_actions = []
         set_of_orientations = []
@@ -114,13 +117,13 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
                 input('Press enter to continue..')
 
         if not flag_bag_changed:
-            image_batch.append(image)
+            image_batch.append(augment(image))
             actions_batch.append(np.array(set_of_actions))
             classes_batch.append(np.array(set_of_events))
             orientations_batch.append(np.array(set_of_orientations))
 
-    image_batch = torch.from_numpy(np.array(image_batch)).float().cuda().permute(0,3,1,2)
-    image_batch = augment(image_batch) #TODO to check!!
+    # image_batch = torch.from_numpy(np.array(image_batch)/255).float().cuda().permute(0,3,1,2)
+    image_batch = torch.stack(image_batch).cuda() #TODO to check!!
 
     actions_batch = torch.from_numpy(np.array(actions_batch)).float().cuda().permute(1,0,2)
     classes_batch = torch.from_numpy(np.array(classes_batch)).cuda().permute(1,0)
