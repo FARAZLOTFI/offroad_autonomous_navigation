@@ -45,7 +45,9 @@ class Metrics:
         r = []
         f1 = []
         acc = []
+        x = []
         for i in range(self.planning_horizon):
+            x.append(i + 1)
             p.append(self.precision[i].compute())
             r.append(self.recall[i].compute())
             acc.append(self.accuracy[i].compute())
@@ -55,10 +57,10 @@ class Metrics:
         print("---METRICS---\nPrecision: {}\nRecall: {}\nF1: {}\nAccuracy: {}\n".format(p, r, f1, acc))
 
         if filename:
-            plt.plot(p, label='Precision')
-            plt.plot(r, label='Recall')
-            plt.plot(acc, label='Accuracy')
-            plt.plot(f1, label="F1")
+            plt.plot(x, p, label='Precision', marker='o')
+            plt.plot(x, r, label='Recall',marker='o')
+            plt.plot(x, acc, label='Accuracy',marker='o')
+            plt.plot(x, f1, label="F1", marker='o')
             plt.xlabel('Planning Horizon')
             plt.ylabel('Score')
             plt.title('Metrics')

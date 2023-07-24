@@ -252,7 +252,7 @@ if __name__ == "__main__":
 
         for i in range(validation_iterations):
             inputs, true_outputs = input_preparation(val_images_list, path_to_images, val_topics_list, path_to_topics,
-                                               val_classes_list, path_to_annotations, planning_horizon, batchsize=VAL_BATCH_SIZE)
+                                               val_classes_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE)
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
             # calculate loss
