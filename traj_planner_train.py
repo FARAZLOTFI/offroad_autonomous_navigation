@@ -13,6 +13,7 @@ import time
 from MHE_MPC.system_identification import euler_from_quaternion, GPS_deg2vel
 import MHE_MPC.config as config
 import matplotlib.pyplot as plt 
+from metrics import Metrics
 plt.ion()
 
 image_size=(72,128)
@@ -217,6 +218,9 @@ if __name__ == "__main__":
     epochs = range(last_epoch,300)
     train_iterations = int(len(train_images_list)/BATCH_SIZE)
     validation_iterations = int(len(val_images_list)/BATCH_SIZE)
+
+    metrics = Metrics(planning_horizon=planning_horizon, device=device)
+    
     for param in model.parameters():
         param.requires_grad = True
     # clear the gradients
@@ -244,16 +248,21 @@ if __name__ == "__main__":
         # validation part
         model.eval()
         
+        metrics.reset()
+
         for i in range(validation_iterations):
             inputs, true_outputs = input_preparation(val_images_list, path_to_images, val_topics_list, path_to_topics,
-                                               val_classes_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE)
+                                               val_classes_list, path_to_annotations, planning_horizon, batchsize=VAL_BATCH_SIZE)
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
             # calculate loss
             val_loss, val_loss_terms = total_loss(planning_horizon, model_outputs, true_outputs)
             #print("Processing the training data: ",100*zz/len(val_list),' validation loss: ',val_loss, end='', flush=True)
 
+            metrics.update(model_outputs[0], true_outputs[0])
 
+        metrics.compute(filename='metrics.png')
+       
         writer_train.add_scalar('Total Loss', train_loss, epoch)
         writer_val.add_scalar('Total Loss', val_loss, epoch)
         for ii in range(monitored_terms_count):
