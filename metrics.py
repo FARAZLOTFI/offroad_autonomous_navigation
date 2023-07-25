@@ -1,6 +1,7 @@
 from ignite.metrics import Precision, Recall, Accuracy
 import math
 from matplotlib import pyplot as plt
+import numpy as np 
 
 class Metrics: 
 
@@ -17,7 +18,7 @@ class Metrics:
             self.precision.append(Precision(average=True, device=self.device))
             p = Precision(device=self.device, average=False)
             r = Recall(device=self.device, average=False)
-            f1 = (p * r * 2 / (p + r)).mean()
+            f1 = (p * r * 2 / (p + r))
             self.f1.append(f1)
             self.accuracy.append(Accuracy(device=self.device))
 
@@ -51,8 +52,7 @@ class Metrics:
             p.append(self.precision[i].compute())
             r.append(self.recall[i].compute())
             acc.append(self.accuracy[i].compute())
-            f1.append(self.f1[i].compute().item())   
-        f1 = [0 if math.isnan(x) else x for x in f1]
+            f1.append(np.mean(np.nan_to_num(self.f1[i].compute().detach().numpy())))   
         
         print("---METRICS---\nPrecision: {}\nRecall: {}\nF1: {}\nAccuracy: {}\n".format(p, r, f1, acc))
 
