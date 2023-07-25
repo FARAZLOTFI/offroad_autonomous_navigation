@@ -6,6 +6,8 @@ import cv2
 import time
 import numpy as np
 from models.nn_model import PredictiveModelBadgr, LSTMSeqModel
+from tqdm import tqdm
+
 import random
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
@@ -30,6 +32,44 @@ augment = transforms.Compose([
     transforms.ToTensor()
     ])
 
+def load_data_lists():
+    # validation samples
+    try:
+        validation_samples = []
+        with open(config.model_checkpoint + "validation_samples.txt", 'r') as f:
+            lines_ = f.readlines()
+            for line_ in lines_:
+                validation_samples.append(int(line_))
+
+        training_samples = []
+        with open(config.model_checkpoint + "training_samples.txt", 'r') as f:
+            lines_ = f.readlines()
+            for line_ in lines_:
+                training_samples.append(int(line_))
+        print('Samples list found!')
+    except:
+        print('There is no samples list found!')
+        validation_samples = np.random.randint(len(images_list), size=int(0.2 * len(images_list)))
+        with open(config.model_checkpoint + "validation_samples.txt", 'w') as f:
+            for item in validation_samples:
+                f.write(str(item) + '\n')
+
+        # Training samples
+        training_samples = []
+        for i in range(len(images_list)):
+            flag_item = True
+            for item in validation_samples:
+                if i == item:
+                    flag_item = False
+                    break
+            if flag_item:
+                training_samples.append(i)
+
+        with open(config.model_checkpoint + "training_samples.txt", 'w') as f:
+            for item in training_samples:
+                f.write(str(item) + '\n')
+
+    return training_samples, validation_samples
 def load_topic_file(file_path, prev_gps_data):
     # the order of the data is: steering angle, throttle, w, x, y, z, Lon, lat,
     # then, timestamps for the image, depth, teensy, imu, and gps topics
@@ -57,11 +97,12 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
     # we look for the correspondent topic and annotation in the topic and annotation list
     # as we need a set of these we go forward collecting topics and annotations for the future also ending up with
     # the required data for training the model
-    for item in candidates:
+    for candidate in candidates:
         ##################################################################
         file_number = None
         flag_bag_changed = False
-        image = cv2.imread(images_path+images_list[item])
+        image = cv2.imread(images_path+images_list[candidate])
+        item = topics_list.index('topics' + images_list[candidate][5:-4] + '.npy')
         # image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
         
         # Now prepare the ground truths
@@ -139,7 +180,7 @@ def total_loss(planning_horizon, nn_out, true_out):
         train_loss1 += classification_criterion(nn_out[0][i], true_out[0][i])#
         train_loss2 += regression_criterion(nn_out[1][i], true_out[1][i])  # batch, ...
 
-    train_loss = train_loss1 + train_loss2
+    train_loss = train_loss1 #+ train_loss2
     return train_loss,[train_loss1,train_loss2]
 
 if __name__ == "__main__":
@@ -200,22 +241,28 @@ if __name__ == "__main__":
     images_list = os.listdir(path_to_images)
     topics_list = os.listdir(path_to_topics)
     annotations_list = os.listdir(path_to_annotations)
-
+    #################### NOTE WE NEED TO SORT THESE LISTS TO FEED THE NN WITH THE RIGHT DATA#########
     images_list.sort()
     topics_list.sort()
     annotations_list.sort()
+    ################################################################################################
+    # The following was not good as we tend to take the first recorded bags for training, whereas the last ones for validation
+    # train_images_list = images_list[:int(0.8*len(images_list))]
+    # val_images_list = images_list[int(0.8*len(images_list)):]
+    #
+    # train_topics_list = topics_list[:int(0.8 * len(topics_list))]
+    # val_topics_list = topics_list[int(0.8 * len(topics_list)):]
+    #
+    # train_classes_list = annotations_list[:int(0.8 * len(annotations_list))]
+    # val_classes_list = annotations_list[int(0.8 * len(annotations_list)):]
 
-    train_images_list = images_list[:int(0.8*len(images_list))]
-    val_images_list = images_list[int(0.8*len(images_list)):]
+    training_samples, validation_samples = load_data_lists()
 
-    train_topics_list = topics_list[:int(0.8 * len(topics_list))]
-    val_topics_list = topics_list[int(0.8 * len(topics_list)):]
+    train_images_list = [images_list[i] for i in training_samples]
+    val_images_list = [images_list[i] for i in validation_samples]
 
-    train_classes_list = annotations_list[:int(0.8 * len(annotations_list))]
-    val_classes_list = annotations_list[int(0.8 * len(annotations_list)):]
-
-    BATCH_SIZE = 128
-    epochs = range(last_epoch,300)
+    BATCH_SIZE = 64
+    epochs = range(last_epoch,800)
     train_iterations = int(len(train_images_list)/BATCH_SIZE)
     validation_iterations = int(len(val_images_list)/BATCH_SIZE)
 
@@ -228,10 +275,10 @@ if __name__ == "__main__":
         # Training part 
         model.train()
 
-        for i in range(train_iterations):
+        for i in tqdm(range(train_iterations)):
             #images_list, images_path, topics_list, topics_path, classes_list, classes_path, planning_horizon, batchsize
-            inputs, true_outputs = input_preparation(train_images_list, path_to_images, train_topics_list, path_to_topics,
-                                               train_classes_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE)
+            inputs, true_outputs = input_preparation(train_images_list, path_to_images, topics_list, path_to_topics,
+                                               annotations_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE)
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
 
@@ -250,9 +297,9 @@ if __name__ == "__main__":
         
         metrics.reset()
 
-        for i in range(validation_iterations):
-            inputs, true_outputs = input_preparation(val_images_list, path_to_images, val_topics_list, path_to_topics,
-                                               val_classes_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE)
+        for i in tqdm(range(validation_iterations)):
+            inputs, true_outputs = input_preparation(val_images_list, path_to_images, topics_list, path_to_topics,
+                                               annotations_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE)
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
             # calculate loss
