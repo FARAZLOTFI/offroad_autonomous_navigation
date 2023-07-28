@@ -65,8 +65,6 @@ if __name__ == "__main__":
     val_images_list = [images_list[i] for i in validation_samples]
 
     BATCH_SIZE = 64
-    train_iterations = int(len(train_images_list)/BATCH_SIZE)
-    validation_iterations = int(len(val_images_list)/BATCH_SIZE)
 
     metrics = Metrics(planning_horizon=planning_horizon, device=device)
     
@@ -78,10 +76,10 @@ if __name__ == "__main__":
         #reset metrics
         metrics.reset()
 
-        for i in tqdm(range(train_iterations)):
+        for i in tqdm(range(0, len(train_images_list) - planning_horizon, BATCH_SIZE)):
             #images_list, images_path, topics_list, topics_path, classes_list, classes_path, planning_horizon, batchsize
             inputs, true_outputs = input_preparation(train_images_list, path_to_images, topics_list, path_to_topics,
-                                                annotations_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE, augment=augment)
+                                                annotations_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE, augment=augment, randomize=False, start_sample=i)
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
 
@@ -96,9 +94,9 @@ if __name__ == "__main__":
         # validation set    
         metrics.reset()
 
-        for i in tqdm(range(validation_iterations)):
+        for i in tqdm(range(0, len(val_images_list) - planning_horizon, BATCH_SIZE)):
             inputs, true_outputs = input_preparation(val_images_list, path_to_images, topics_list, path_to_topics,
-                                                annotations_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE, augment=augment)
+                                                annotations_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE, augment=augment, randomize=False, start_sample=i)
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
            

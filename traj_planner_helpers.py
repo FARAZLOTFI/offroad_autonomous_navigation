@@ -59,12 +59,16 @@ def load_topic_file(file_path, prev_gps_data):
         vel, dbearing = GPS_deg2vel(prev_gps_data[0], lon_GPS, prev_gps_data[1], lat_GPS)
         return np.array([lon_GPS, lat_GPS, dbearing, steering_angle * (-0.6), throttle])
 
-def input_preparation(images_list, images_path, topics_list, topics_path, classes_list, classes_path, planning_horizon, batchsize, augment, debug_=False):
+def input_preparation(images_list, images_path, topics_list, topics_path, classes_list, classes_path, planning_horizon, batchsize, augment, randomize=True, start_sample = 0, debug_=False):
     image_batch = []
     actions_batch = []
     classes_batch = []
     orientations_batch = []
-    candidates = np.random.randint(len(images_list), size=batchsize)
+    if randomize:
+        candidates = np.random.randint(len(images_list), size=batchsize)
+    else:
+        candidates = np.arange(start_sample, min(start_sample + batchsize, len(images_list) - planning_horizon))
+
     # assuming that we got the current image and the next few sensor measurements
     # for each random candidate we read the image, then depending on the its index in the image list
     # we look for the correspondent topic and annotation in the topic and annotation list
