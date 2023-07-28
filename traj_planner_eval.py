@@ -86,11 +86,12 @@ if __name__ == "__main__":
             model_outputs = model.training_phase_output(inputs)
 
             #update metrics
-            metrics.update(model_outputs[0], true_outputs[0])
+            metrics.update(model_outputs, true_outputs)
 
-        metrics.compute(filename='metrics_train.png')
-
-
+        metrics.compute(regression_filename='metrics_train_reg.png', 
+                        regression_title='Training Set Mean Squared Error (MSE)', 
+                        classification_filename='metrics_train_clf.png', 
+                        classification_title='Training Set Classification Metrics')
 
         # validation set    
         metrics.reset()
@@ -101,9 +102,12 @@ if __name__ == "__main__":
             # compute the model output
             model_outputs = model.training_phase_output(inputs)
            
-            metrics.update(model_outputs[0], true_outputs[0])
+            metrics.update(model_outputs, true_outputs)
 
-        metrics.compute(filename='metrics_val.png')
+        metrics.compute(regression_filename='metrics_test_reg.png', 
+                        regression_title='Test Set Mean Squared Error (MSE)', 
+                        classification_filename='metrics_test_clf.png', 
+                        classification_title='Test Set Classification Metrics')
        
       
 

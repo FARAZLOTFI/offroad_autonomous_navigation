@@ -154,5 +154,5 @@ def total_loss(planning_horizon, classification_criterion, regression_criterion,
         train_loss1 += classification_criterion(nn_out[0][i], true_out[0][i])#
         train_loss2 += regression_criterion(nn_out[1][i], true_out[1][i])  # batch, ...
 
-    train_loss = train_loss1 #+ train_loss2
+    train_loss = train_loss1 + train_loss2
     return train_loss,[train_loss1,train_loss2]

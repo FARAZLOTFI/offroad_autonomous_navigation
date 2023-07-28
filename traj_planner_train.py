@@ -150,7 +150,7 @@ if __name__ == "__main__":
             #print("Processing the training data: ",100*zz/len(val_list),' validation loss: ',val_loss, end='', flush=True)
 
             #update metrics with batch data
-            metrics.update(model_outputs[0], true_outputs[0])
+            metrics.update(model_outputs, true_outputs)
 
         #print metrics but dont save
         metrics.compute()
