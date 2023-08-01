@@ -56,12 +56,8 @@ if __name__ == "__main__":
     topics_list.sort()
     annotations_list.sort()
    
-    _, validation_samples = load_data_lists(len(images_list))
-
-    val_images_list = [images_list[i] for i in validation_samples]
-
-    start_sample = 107
-    # start_sample = val_images_list.index('image_2023-06-14-10-40-39_0020.jpg')
+    start_sample = 112
+    # start_sample = images_list.index('image_2023-06-14-10-40-39_0020.jpg')
     
     metrics = Metrics(planning_horizon=planning_horizon, device=device)
 
@@ -72,7 +68,7 @@ if __name__ == "__main__":
 
         metrics.reset()
 
-        inputs, true_outputs = input_preparation(val_images_list, path_to_images, topics_list, path_to_topics,
+        inputs, true_outputs = input_preparation(images_list, path_to_images, topics_list, path_to_topics,
                                             annotations_list, path_to_annotations, planning_horizon, batchsize=1, augment=augment, randomize=False, start_sample=start_sample)
         # compute the model output
         model_outputs = model.training_phase_output(inputs)
@@ -87,7 +83,7 @@ if __name__ == "__main__":
 
         print()
 
-        print('ANALYZING IMAGE: ', val_images_list[start_sample])
+        print('ANALYZING IMAGE: ', images_list[start_sample])
         print('TRUE EVENTS: ', true_events)
         print('PREDICTED EVENTS: ', pred_events)
         print('TRUE ORIENTATIONS: ', true_orient)
