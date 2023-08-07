@@ -81,7 +81,7 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
         image = cv2.imread(images_path+images_list[candidate])
         item = topics_list.index('topics' + images_list[candidate][5:-4] + '.npy')
         # image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-        
+        skip_step = 2
         # Now prepare the ground truths
         set_of_actions = []
         set_of_orientations = []
@@ -89,20 +89,20 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
         gps_data = None # to be used for bearing estimation
         for i in range(planning_horizon + 1):
             # we have this assumption of correspendency between the images and the ground truth
-            if not(item + i<len(topics_list)):
+            if not(item + i*skip_step<len(topics_list)):
                 flag_bag_changed = True
                 break
-            topic_file = topics_path + topics_list[item + i]
+            topic_file = topics_path + topics_list[item + i*skip_step]
             ##### this is used to take care of the change in the rosbag #####
             if file_number is None:
-                file_number = int(topics_list[item + i][-8:-4])
+                file_number = int(topics_list[item + i*skip_step][-8:-4])
             else:
-                if not(int(topics_list[item + i][-8:-4]) - file_number == 1):
+                if not(int(topics_list[item + i*skip_step][-8:-4]) - file_number == 1*skip_step):
                     #print('Rosbag changed!!!')
                     flag_bag_changed = True
                     break  # if the rosbag is changed we need to skip the sample as it's not a proper one
                 else:
-                    file_number = int(topics_list[item + i][-8:-4])
+                    file_number = int(topics_list[item + i*skip_step][-8:-4])
 
             if gps_data is None:
                 measurements = load_topic_file(topic_file, gps_data)
@@ -114,7 +114,7 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
                 # note that we ignore the current orientation, we need the future ones
                 set_of_orientations.append(measurements[2]/np.pi)
                 # also the event/class of the future samples
-                class_file = classes_path + classes_list[item + i]
+                class_file = classes_path + classes_list[item + i*skip_step]
                 with open(class_file) as f:
                     image_class = int(float(f.read()))
                 set_of_events.append(image_class)
@@ -129,9 +129,9 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
                 plt.figure('augmented image')
                 plt.imshow(image)
 
-                print('image: ',images_list[item])
-                print('topic: ', topics_list[item + i])
-                print('class: ', classes_list[item + i])
+                print('image: ',images_list[candidate])
+                print('topic: ', topics_list[item + i*skip_step])
+                print('class: ', classes_list[item + i*skip_step])
 
                 input('Press enter to continue..')
 

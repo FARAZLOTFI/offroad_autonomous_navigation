@@ -28,7 +28,7 @@ augment = transforms.Compose([
 if __name__ == "__main__":
 
     load_from_checkpoint = False
-    planning_horizon = 5
+    planning_horizon = 40
     num_event_types = 9 + 1  # one for regression
     n_seq_model_layers = 4
     seq_elem_dim = 16

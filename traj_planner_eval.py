@@ -24,7 +24,7 @@ augment = transforms.Compose([
 
 if __name__ == "__main__":
 
-    planning_horizon = 5
+    planning_horizon = 40
     num_event_types = 9 + 1  # one for regression
     n_seq_model_layers = 4
     seq_elem_dim = 16
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    CHECKPOINT_PATH = config.model_checkpoint+'training_checkpoint_617'
+    CHECKPOINT_PATH = config.model_checkpoint+'training_checkpoint'
    
     try:        
         checkpoint = torch.load(CHECKPOINT_PATH,map_location=device)
