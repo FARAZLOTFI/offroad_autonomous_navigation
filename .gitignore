@@ -1,2 +1,9 @@
 dataset/
 classifier/models/
+confusion/
+traj_planner_training_logs/
+models/__pycache__/
+MHE_MPC/__pycache__
+training/models/
+training_plots/
+__pycache__/

@@ -17,7 +17,7 @@ label_names = ['Tree', 'Other Obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', '
 save_misclassified = False
 
 #model to load
-model_dir = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/1_r50_gauss/'
+model_dir = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/7/'
 model_fname = 'best.pt'
 
 #create dataset

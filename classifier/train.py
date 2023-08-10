@@ -7,16 +7,16 @@ from torch import nn, optim
 from ignite.metrics import Precision, Recall, Loss, Accuracy
 import numpy as np 
 from matplotlib import pyplot as plt
-from torchsummary import summary
+from torchinfo import summary
 
 data_directory = '/usr/local/data/kvirji/offroad_autonomous_navigation/dataset/'
-model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/3_r18_gauss/'
+model_save_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/7/'
 batch_size = 256
 epochs = 200
 
 #to load from checkpoint
 load_checkpoint = False
-checkpoint_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/2/last.pt'
+checkpoint_path = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/7/last.pt'
 
 #set to true to analyze sample distribution per batch and view image augmentations
 analyze = False
@@ -79,7 +79,7 @@ model.fc = nn.Sequential(
 #send model to device
 model.to(device)
 
-summary(model, input_size=(3, 224, 224))
+summary(model, input_size=(batch_size,3, 224, 224))
 
 #define loss function and optimizer. flexible to change
 loss_fn = nn.NLLLoss()
