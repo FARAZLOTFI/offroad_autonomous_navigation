@@ -1,2 +1,4 @@
 dataset/
 classifier/models/
+*.pyc
+*.sh
