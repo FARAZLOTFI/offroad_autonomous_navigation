@@ -5,5 +5,5 @@ traj_planner_training_logs/
 models/__pycache__/
 MHE_MPC/__pycache__
 training/models/
-training_plots/
+results/other/
 __pycache__/
