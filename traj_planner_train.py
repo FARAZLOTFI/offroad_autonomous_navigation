@@ -1,7 +1,7 @@
 import torch
 from torchvision import transforms
 import os
-from models.nn_model import PredictiveModelBadgr, LSTMSeqModel
+from models.nn_model import PredictiveModelBadgr, LSTMSeqModel, TransformerSeqModel
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 import MHE_MPC.config as config
@@ -33,7 +33,9 @@ if __name__ == "__main__":
     n_seq_model_layers = 4
     seq_elem_dim = 16
     action_dimension = 2
-    seq_encoder = LSTMSeqModel(n_seq_model_layers, seq_elem_dim)
+    #seq_encoder = LSTMSeqModel(n_seq_model_layers, seq_elem_dim)
+    seq_encoder = TransformerSeqModel(n_seq_model_layers, seq_elem_dim)
+
     model = PredictiveModelBadgr(planning_horizon, num_event_types,
                                             action_dimension, seq_encoder, n_seq_model_layers)
     model.cuda()
@@ -104,7 +106,7 @@ if __name__ == "__main__":
     val_images_list = [images_list[i] for i in validation_samples]
 
     BATCH_SIZE = 64
-    epochs = range(last_epoch,800)
+    epochs = range(last_epoch,1200)
     train_iterations = int(len(train_images_list)/BATCH_SIZE)
     validation_iterations = int(len(val_images_list)/BATCH_SIZE)
 
