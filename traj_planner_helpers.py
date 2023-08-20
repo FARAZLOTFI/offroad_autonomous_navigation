@@ -125,7 +125,7 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
             if len(set_of_actions)<planning_horizon:
                 # note that we ignore the horizon + 1 action
                 set_of_actions.append(actions)
-            debug_ = True
+            #debug_ = True
             if (debug_ ):
                 plt.figure('augmented image')
                 plt.imshow(image)
