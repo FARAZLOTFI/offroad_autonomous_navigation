@@ -134,8 +134,10 @@ class Metrics:
         mix_dist = cat_dist.mean(0)
         cat_dist = cat_dist.type(torch.float64)
         mix_dist = mix_dist.type(torch.float64)
+        pred_classification = mix_dist[0,1,:].argmax()
+        pred_regression = regression_outputs[:,:,:,0].mean(0)
         epi_unc_classification = -(mix_dist*torch.log(mix_dist)).sum(2)+(cat_dist*torch.log(cat_dist)).sum(3).mean(0)
-        return epi_unc_classification, epi_unc_regressions 
+        return pred_classification, pred_regression, epi_unc_classification, epi_unc_regressions 
         
 
     #compute metrics with data passed in through update
@@ -176,7 +178,7 @@ class Metrics:
             plt.savefig(regression_filename)
             plt.cla()
     
-    def plot_unc(self, epi_unc_clf, epi_unc_rg, ensemble_type, ensemble_size, path):
+    def plot_unc(self, epi_unc_clf, epi_unc_rg, ensemble_type, ensemble_size, path, epoch, seq_encoder):
         title_size = 15
         line_width = 4
         tick_size = 14
@@ -215,5 +217,7 @@ class Metrics:
         labs = [l.get_label() for l in lns]
         ax.legend(lns, labs, loc=0)
         fig.tight_layout()
-        plt.savefig(os.path.join(path, f'{ensemble_type}_{ensemble_size}_unc.svg'))
+        plt.savefig(os.path.join(path, f'{ensemble_type}_{ensemble_size}_epoch{epoch}_{seq_encoder}_unc.svg'))
         plt.close()
+        np.save(os.path.join(path, f'uncs_reg_{seq_encoder}_epoch{epoch}_{ensemble_type}_{ensemble_size}.npy'), epi_unc_rg)
+        np.save(os.path.join(path, f'uncs_clf_{seq_encoder}_epoch{epoch}_{ensemble_type}_{ensemble_size}.npy'), epi_unc_clf)

@@ -2,3 +2,4 @@ dataset/
 classifier/models/
 *.pyc
 *.sh
+*.out

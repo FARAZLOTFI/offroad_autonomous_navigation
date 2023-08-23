@@ -88,7 +88,7 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
         image = cv2.imread(images_path+images_list[candidate])
         item = topics_list.index('topics' + images_list[candidate][5:-4] + '.npy')
         # image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-        skip_step = 1 
+        skip_step = np.random.randint(1,4)
         # Now prepare the ground truths
         set_of_actions = []
         set_of_orientations = []
@@ -127,7 +127,8 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
                 set_of_events.append(image_class)
 
             actions = measurements[-2:]
-
+            ## changing the throttle according to the skip_step
+            actions[-1] = actions[-1]*(skip_step/3)
             if len(set_of_actions)<planning_horizon:
                 # note that we ignore the horizon + 1 action
                 set_of_actions.append(actions)

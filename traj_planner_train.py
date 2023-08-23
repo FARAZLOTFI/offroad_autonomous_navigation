@@ -2,7 +2,7 @@ import argparse
 import torch
 from torchvision import transforms
 import os
-from models.nn_model import PredictiveModelBadgr, LSTMSeqModel
+from models.nn_model import PredictiveModelBadgr, LSTMSeqModel, TransformerSeqModel
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 #import MHE_MPC.config as config
@@ -35,16 +35,22 @@ if __name__ == "__main__":
                         help='ensemble size for uncertainty estimation')
     parser.add_argument('--ensemble_type', default="fixed_masks", type=str,
                         help='type of ensemble to make')
+    parser.add_argument('--seq_encoder', default="LSTM", type=str,
+                        help='type of sequence encoder')
     args = parser.parse_args()
+    # $SLURM_TMPDIR/
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     config.path_to_dataset = os.path.join(args.slurm_dir, 'offroad_navigation_dataset')
     load_from_checkpoint = False
-    planning_horizon = 30 
+    planning_horizon = 40 
     num_event_types = 9 + 1  # one for regression
     n_seq_model_layers = 4
     seq_elem_dim = 16
     action_dimension = 2
-    seq_encoder = LSTMSeqModel(n_seq_model_layers, seq_elem_dim)
+    if args.seq_encoder == 'LSTM':
+        seq_encoder = LSTMSeqModel(n_seq_model_layers, seq_elem_dim)
+    else:
+        seq_encoder = TransformerSeqModel(n_seq_model_layers, seq_elem_dim)
     model = PredictiveModelBadgr(planning_horizon, num_event_types,
                                     action_dimension, seq_encoder, n_seq_model_layers,
                                     device = device, ensemble_size = args.ensemble_size, 
@@ -136,6 +142,7 @@ if __name__ == "__main__":
         model.train()
 
         for i in tqdm(range(train_iterations)):
+        #for i in tqdm(range(4)):
             #images_list, images_path, topics_list, topics_path, classes_list, classes_path, planning_horizon, batchsize
             inputs, true_outputs = input_preparation(train_images_list, path_to_images, topics_list, path_to_topics,
                                                annotations_list, path_to_annotations, planning_horizon, 
@@ -163,6 +170,7 @@ if __name__ == "__main__":
         epi_unc_rg = []
         epi_unc_clf = []
         for i in tqdm(range(validation_iterations)):
+        #for i in tqdm(range(4)):
             inputs, true_outputs = input_preparation(val_images_list, path_to_images, topics_list, path_to_topics,
                                                annotations_list, path_to_annotations, planning_horizon, batchsize=BATCH_SIZE, augment=augment)
             # compute the model output
@@ -175,9 +183,9 @@ if __name__ == "__main__":
             #update metrics with batch data
             metrics.update(model_outputs, true_outputs, gauss_out = ensemble_bool)
             if ensemble_bool:
-                epi_unc_classification, epi_unc_regressions = metrics.calc_unc(model, inputs)
-            epi_unc_clf.append(epi_unc_classification)
-            epi_unc_rg.append(epi_unc_regressions)
+                pred_classification, pred_regression, epi_unc_classification, epi_unc_regressions = metrics.calc_unc(model, inputs)
+                epi_unc_clf.append(epi_unc_classification)
+                epi_unc_rg.append(epi_unc_regressions)
         
         #print metrics but dont save
         metrics.compute()
@@ -186,7 +194,9 @@ if __name__ == "__main__":
             KL = [i['KL'] for i in epi_unc_rg]
             BHATT = [i['Bhatt'] for i in epi_unc_rg]
             epi_unc_rg = {'KL':torch.hstack(KL), 'Bhatt': BHATT}
-            metrics.plot_unc(epi_unc_clf, epi_unc_regressions, args.ensemble_type, args.ensemble_size, config.training_logfiles)
+            metrics.plot_unc(epi_unc_clf, epi_unc_regressions, args.ensemble_type, args.ensemble_size, 
+                config.training_logfiles, epoch, args.seq_encoder)
+
        
         writer_train.add_scalar('Total Loss', train_loss, epoch)
         writer_val.add_scalar('Total Loss', val_loss, epoch)
