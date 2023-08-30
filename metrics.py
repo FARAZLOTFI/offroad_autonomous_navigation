@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 import numpy as np 
 import torch
 
-LOG_SIG_MAX = 5
-LOG_SIG_MIN = -20
+LOG_SIG_MAX = 2 
+LOG_SIG_MIN = -2
 
 class Metrics: 
 
@@ -127,7 +127,7 @@ class Metrics:
         dist_metrics = ['KL', 'Bhatt']
         epi_unc_regressions = {}
         for dist in dist_metrics:
-            sigs = torch.clamp(torch.exp(regression_outputs[:,:,:,-1]), min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+            sigs = torch.exp(torch.clamp(regression_outputs[:,:,:,-1], min=LOG_SIG_MIN, max=LOG_SIG_MAX))
             epi_unc, _ = self.pairwise_exp(regression_outputs[:,:,:,0], sigs, dist, model.ensemble_size)
             epi_unc_regressions[dist]=epi_unc
         cat_dist = torch.nn.functional.softmax(classification_outputs,dim=3)
@@ -217,7 +217,10 @@ class Metrics:
         labs = [l.get_label() for l in lns]
         ax.legend(lns, labs, loc=0)
         fig.tight_layout()
-        plt.savefig(os.path.join(path, f'{ensemble_type}_{ensemble_size}_epoch{epoch}_{seq_encoder}_unc.svg'))
+        unc_path = os.path.join(path, 'uncertainty')
+        if not os.path.exists(unc_path):
+            os.makedirs(unc_path)
+        plt.savefig(os.path.join(unc_path, f'{ensemble_type}_{ensemble_size}_epoch{epoch}_{seq_encoder}_unc.png'))
         plt.close()
-        np.save(os.path.join(path, f'uncs_reg_{seq_encoder}_epoch{epoch}_{ensemble_type}_{ensemble_size}.npy'), epi_unc_rg)
-        np.save(os.path.join(path, f'uncs_clf_{seq_encoder}_epoch{epoch}_{ensemble_type}_{ensemble_size}.npy'), epi_unc_clf)
+        np.save(os.path.join(unc_path, f'uncs_reg_{seq_encoder}_epoch{epoch}_{ensemble_type}_{ensemble_size}.npy'), epi_unc_rg)
+        np.save(os.path.join(unc_path, f'uncs_clf_{seq_encoder}_epoch{epoch}_{ensemble_type}_{ensemble_size}.npy'), epi_unc_clf)
