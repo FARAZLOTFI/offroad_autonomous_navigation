@@ -6,11 +6,12 @@ In this work, we investigate a hybrid control scheme that combines nonlinear mod
 
 We also incorporate a nonlinear MPC controller that accounts for the intricacies of the vehicle model. The model-based RL planner produces steering angles and quantifies inherent uncertainty. At the same time, the nonlinear MPC suggests optimal throttle settings, striking a balance between goal attainment speed and managing model uncertainty. Our approach excels in handling complex environmental challenges and integrates the vehicle's kinematic model to enhance decision-making.
 
-Our dataset used for this work can be found [here](https://github.com/FARAZLOTFI/offroad_autonomous_navigation)
+Here are a few samples of our dataset from different trials: 
+![repo](https://github.com/FARAZLOTFI/offroad_autonomous_navigation/assets/44290848/01e75364-4f6f-4445-9cab-ec08f2e0e8d1)
+
+The link to download our dataset (coming soon) [here](https://github.com/FARAZLOTFI/offroad_autonomous_navigation)
 
 # Code Structure
-* Uncertainty Branch - TBD
-* MHE_MPC - TBD
 * classifier/
   * The training and evaluation pipleline for comparing state-of-the-art classification models on our dataset
 * dataset_preparation/
@@ -25,3 +26,8 @@ Our dataset used for this work can be found [here](https://github.com/FARAZLOTFI
 * traj_planner_[train/eval].py - training, and evaluation pipelines for the trajectory planner. Replace `seq_encoder = LSTMSeqModel(...)` with `seq_encoder = TransformerSeqModel(...)` to switch between LSTM and Transformer modules.
 * traj_planner_helpers.py - helper functions such as input preparation, and loss function calculations used in both the trajectory planner training and evaluation pipelines.
 * traj_planner_visualize.py - pipeline to easily visualize model predictions for a given input. 
+* MHE_MPC
+  *  hybrid_controller.py - Implementation of the hybrid planner
+  *  System Identification - The moving horizon estimator to estimate the states and parameters of the vehicle
+* Uncertainty Branch
+  * This branch has the same structure as the main branch, while incorporating the uncertainty in it.    
