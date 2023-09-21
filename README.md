@@ -22,7 +22,7 @@ The link to download our dataset (coming soon) [here](https://github.com/FARAZLO
   * BADGR, LSTM, and Transformer networks
 * results/
   * Results for LSTM, Transformer, and Speed studies
-* metrics.py - metrics used for performance evaluation. Based on [[PyTorch Ignite Metrics](https://pytorch.org/ignite/index.html)
+* metrics.py - metrics used for performance evaluation. Based on [PyTorch Ignite Metrics](https://pytorch.org/ignite/index.html)
 * traj_planner_[train/eval].py - training, and evaluation pipelines for the trajectory planner. Replace `seq_encoder = LSTMSeqModel(...)` with `seq_encoder = TransformerSeqModel(...)` to switch between LSTM and Transformer modules.
 * traj_planner_helpers.py - helper functions such as input preparation, and loss function calculations used in both the trajectory planner training and evaluation pipelines.
 * traj_planner_visualize.py - pipeline to easily visualize model predictions for a given input. 
