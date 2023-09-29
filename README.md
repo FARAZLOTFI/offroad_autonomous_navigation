@@ -7,8 +7,8 @@ In this work, we investigate a hybrid control scheme that combines nonlinear mod
 We also incorporate a nonlinear MPC controller that accounts for the intricacies of the vehicle model. The model-based RL planner produces steering angles and quantifies inherent uncertainty. At the same time, the nonlinear MPC suggests optimal throttle settings, striking a balance between goal attainment speed and managing model uncertainty. Our approach excels in handling complex environmental challenges and integrates the vehicle's kinematic model to enhance decision-making.
 
 Here are a few samples of our dataset from different trials: 
+![repo](https://github.com/FARAZLOTFI/offroad_autonomous_navigation/assets/44290848/6cbdb552-d60f-4f75-9b79-79533a573ada)
 
-![repo](https://github.com/FARAZLOTFI/offroad_autonomous_navigation/assets/44290848/01e75364-4f6f-4445-9cab-ec08f2e0e8d1)
 
 The link to download our dataset will be released soon. <!--[here](https://mcgill-my.sharepoint.com/:u:/g/personal/khalil_virji_mail_mcgill_ca/EeqSokfjlP5ItDJu1XBu6GUB3WQVLOMtolhk3442upqUvw?e=rfLHmd)-->
 
