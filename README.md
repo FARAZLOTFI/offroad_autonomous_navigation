@@ -1,6 +1,6 @@
 # Offroad Autonomous Navigation 
 
-Implementation of paper: [Uncertainty-aware hybrid paradigm of nonlinear MPC and model-based RL for offroad navigation: Exploration of transformers in the prediction model](https://github.com/FARAZLOTFI/offroad_autonomous_navigation)
+Implementation of paper: [Uncertainty-aware hybrid paradigm of nonlinear MPC and model-based RL for offroad navigation: Exploration of transformers in the prediction model](https://arxiv.org/abs/2310.00760)
 
 In this work, we investigate a hybrid control scheme that combines nonlinear model predictive control (MPC) and model-based reinforcement learning (RL) for the navigational planning of an RC car across off-road, unstructured terrains. Our work builds on [BADGR](https://github.com/gkahn13/badgr), by exploring the substitution of LSTM modules with Transformers to enhance environmental modeling capabilities. Addressing uncertainty within the system, we train an ensemble of prediction models and estimate the mutual information between model weights and outputs. This facilitates dynamic horizon planning through the introduction of variable speeds. 
 
