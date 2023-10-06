@@ -1,21 +1,27 @@
+import os
 import torch
 import cv2
 import numpy as np
 from MHE_MPC.system_identification import euler_from_quaternion, GPS_deg2vel
-import MHE_MPC.config as config
+#import MHE_MPC.config as config
+#import MHE_MPC.config_lucas as config
 import matplotlib.pyplot as plt 
 
-def load_data_lists(num_images):
+LOG_SIG_MAX = 0.5
+LOG_SIG_MIN = -0.5
+
+
+def load_data_lists(num_images, path='yo'):
     # validation samples
     try:
         validation_samples = []
-        with open(config.model_checkpoint + "validation_samples.txt", 'r') as f:
+        with open(os.path.join(path, "validation_samples.txt"), 'r') as f:
             lines_ = f.readlines()
             for line_ in lines_:
                 validation_samples.append(int(line_))
 
         training_samples = []
-        with open(config.model_checkpoint + "training_samples.txt", 'r') as f:
+        with open(os.path.join(path, "training_samples.txt"), 'r') as f:
             lines_ = f.readlines()
             for line_ in lines_:
                 training_samples.append(int(line_))
@@ -23,7 +29,7 @@ def load_data_lists(num_images):
     except:
         print('There is no samples list found!')
         validation_samples = np.random.randint(num_images, size=int(0.2 * num_images))
-        with open(config.model_checkpoint + "validation_samples.txt", 'w') as f:
+        with open(os.path.join(path,  "validation_samples.txt"), 'w') as f:
             for item in validation_samples:
                 f.write(str(item) + '\n')
 
@@ -38,16 +44,20 @@ def load_data_lists(num_images):
             if flag_item:
                 training_samples.append(i)
 
-        with open(config.model_checkpoint + "training_samples.txt", 'w') as f:
+        with open(os.path.join(path, "training_samples.txt"), 'w') as f:
             for item in training_samples:
                 f.write(str(item) + '\n')
     return training_samples, validation_samples
 
 
-def load_topic_file(file_path, prev_gps_data):
+def load_topic_file(file_path, prev_gps_data, preloaded_data = {}):
     # the order of the data is: steering angle, throttle, w, x, y, z, Lon, lat,
     # then, timestamps for the image, depth, teensy, imu, and gps topics
-    loaded_data = np.load(file_path)
+    #import pdb; pdb.set_trace()
+    if not preloaded_data:
+        loaded_data = np.load(file_path)
+    else:
+        loaded_data = preloaded_data[os.path.basename(file_path)]
     steering_angle, throttle, w, x, y, z, lon_GPS, lat_GPS = loaded_data[:8]
     roll, pitch, yaw = euler_from_quaternion(x, y, z, w)
     pitch = -pitch
@@ -59,7 +69,9 @@ def load_topic_file(file_path, prev_gps_data):
         vel, dbearing = GPS_deg2vel(prev_gps_data[0], lon_GPS, prev_gps_data[1], lat_GPS)
         return np.array([lon_GPS, lat_GPS, dbearing, steering_angle * (-0.6), throttle])
 
-def input_preparation(images_list, images_path, topics_list, topics_path, classes_list, classes_path, planning_horizon, batchsize, augment, randomize=True, start_sample = 0, debug_=False):
+def input_preparation(images_list, images_path, topics_list, topics_path, classes_list, classes_path,
+        planning_horizon, batchsize, augment, randomize=True, start_sample = 0, 
+        debug_=False, all_topics={}):
     image_batch = []
     actions_batch = []
     classes_batch = []
@@ -105,11 +117,11 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
                     file_number = int(topics_list[item + i*skip_step][-8:-4])
 
             if gps_data is None:
-                measurements = load_topic_file(topic_file, gps_data)
+                measurements = load_topic_file(topic_file, gps_data, preloaded_data=all_topics)
                 # lon, lat
                 gps_data = measurements[:2]
             else:
-                measurements = load_topic_file(topic_file, gps_data)
+                measurements = load_topic_file(topic_file, gps_data, preloaded_data=all_topics)
                 gps_data = measurements[:2]
                 # note that we ignore the current orientation, we need the future ones
                 set_of_orientations.append(measurements[2]/np.pi)
@@ -152,12 +164,18 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
     return [image_batch, actions_batch], [classes_batch, orientations_batch]  # input, output
 
 
-def total_loss(planning_horizon, classification_criterion, regression_criterion, nn_out, true_out):
+def total_loss(planning_horizon, classification_criterion, regression_criterion, nn_out, true_out, gaussian_crit=False):
     train_loss1 = 0
     train_loss2 = 0
     for i in range(planning_horizon):
         train_loss1 += classification_criterion(nn_out[0][i], true_out[0][i])#
-        train_loss2 += regression_criterion(nn_out[1][i], true_out[1][i])  # batch, ...
+        if gaussian_crit:
+            log_sig = torch.exp(torch.clamp(nn_out[1][i][:,1], min=LOG_SIG_MIN, max=LOG_SIG_MAX))
+            train_loss2 += regression_criterion(nn_out[1][i][:,0], true_out[1][i], torch.exp(log_sig))  # batch, ...
+        else:
+            train_loss2 += regression_criterion(nn_out[1][i], true_out[1][i])  # batch, ...
 
     train_loss = train_loss1 + train_loss2
     return train_loss,[train_loss1,train_loss2]
+
+

@@ -1,7 +1,6 @@
 import pickle
 import argparse
 import torch
-import torch.nn as nn
 from torchvision import transforms
 import os
 from models.nn_model import PredictiveModelBadgr, LSTMSeqModel, TransformerSeqModel
@@ -66,7 +65,6 @@ if __name__ == "__main__":
         seq_encoder = LSTMSeqModel(n_seq_model_layers, seq_elem_dim)
     else:
         seq_encoder = TransformerSeqModel(n_seq_model_layers, seq_elem_dim)
-
     model = PredictiveModelBadgr(planning_horizon, num_event_types,
                                     action_dimension, seq_encoder, n_seq_model_layers,
                                     device = device, ensemble_size = args.ensemble_size, 
@@ -148,7 +146,8 @@ if __name__ == "__main__":
     val_images_list = [images_list[i] for i in validation_samples]
 
     BATCH_SIZE = 64
-    epochs = range(last_epoch,1200)
+    epochs = range(last_epoch,800)
+    #epochs = range(last_epoch,802)
     train_iterations = int(len(train_images_list)/BATCH_SIZE)
     validation_iterations = int(len(val_images_list)/BATCH_SIZE)
 
@@ -158,81 +157,41 @@ if __name__ == "__main__":
     for param in model.parameters():
         param.requires_grad = True
     # clear the gradients
-    for epoch in epochs:
-        # Training part 
-        model.train()
+    # validation part
+    epoch = 800
+    model.eval()
+    
+    #reset metrics
+    metrics.reset()
+    
+    epi_unc_rg = []
+    epi_unc_clf = []
+    for i in tqdm(range(validation_iterations)):
+    #for i in tqdm(range(4)):
+        inputs, true_outputs = input_preparation(val_images_list, path_to_images, 
+            topics_list, path_to_topics, annotations_list, path_to_annotations, 
+            planning_horizon, batchsize=BATCH_SIZE, augment=augment, all_topics = all_topics)
+        # compute the model output
+        model_outputs = model.training_phase_output(inputs)
+        # calculate loss
+        val_loss, val_loss_terms = total_loss(planning_horizon, classification_criterion, 
+            regression_criterion, model_outputs, true_outputs, gaussian_crit=ensemble_bool)
+        #print("Processing the training data: ",100*zz/len(val_list),' validation loss: ',val_loss, end='', flush=True)
 
-        
-        for i in tqdm(range(train_iterations)):
-        #for i in tqdm(range(4)):
-            #images_list, images_path, topics_list, topics_path, classes_list, classes_path, planning_horizon, batchsize
-            inputs, true_outputs = input_preparation(train_images_list, path_to_images, 
-                topics_list, path_to_topics, annotations_list, path_to_annotations, 
-                planning_horizon, batchsize=BATCH_SIZE, augment=augment, all_topics = all_topics)
-            # compute the model output
-            model_outputs = model.training_phase_output(inputs)
-
-            # calculate loss
-            train_loss, train_loss_terms = total_loss(planning_horizon, classification_criterion, 
-                regression_criterion, model_outputs, true_outputs, gaussian_crit=ensemble_bool)
-
-            # credit assignment
-            optimizer.zero_grad()
-        
-            train_loss.backward()
-            # update model weights
-            optimizer.step()
-
-        # validation part
-        model.eval()
-        
-        #reset metrics
-        metrics.reset()
-        
-        epi_unc_rg = []
-        epi_unc_clf = []
-        for i in tqdm(range(validation_iterations)):
-        #for i in tqdm(range(4)):
-            inputs, true_outputs = input_preparation(val_images_list, path_to_images, 
-                topics_list, path_to_topics, annotations_list, path_to_annotations, 
-                planning_horizon, batchsize=BATCH_SIZE, augment=augment, all_topics = all_topics)
-            # compute the model output
-            model_outputs = model.training_phase_output(inputs)
-            # calculate loss
-            val_loss, val_loss_terms = total_loss(planning_horizon, classification_criterion, 
-                regression_criterion, model_outputs, true_outputs, gaussian_crit=ensemble_bool)
-            #print("Processing the training data: ",100*zz/len(val_list),' validation loss: ',val_loss, end='', flush=True)
-
-            #update metrics with batch data
-            metrics.update(model_outputs, true_outputs, gauss_out = ensemble_bool)
-            if ensemble_bool:
-                pred_classification, pred_regression, epi_unc_classification, epi_unc_regressions = metrics.calc_unc(model, inputs)
-                epi_unc_clf.append(epi_unc_classification)
-                epi_unc_rg.append(epi_unc_regressions)
-        
-        #print metrics but dont save
-        metrics.compute()
+        #update metrics with batch data
+        metrics.update(model_outputs, true_outputs, gauss_out = ensemble_bool)
         if ensemble_bool:
-            epi_unc_clf = torch.hstack(epi_unc_clf)
-            KL = [i['KL'] for i in epi_unc_rg]
-            BHATT = [i['Bhatt'] for i in epi_unc_rg]
-            epi_unc_rg = {'KL':torch.hstack(KL), 'Bhatt': BHATT}
-            metrics.plot_unc(epi_unc_clf, epi_unc_regressions, args.ensemble_type, args.ensemble_size, 
-                config.training_logfiles, epoch, args.seq_encoder)
-
-       
-        writer_train.add_scalar('Total Loss', train_loss, epoch)
-        writer_val.add_scalar('Total Loss', val_loss, epoch)
-        for ii in range(monitored_terms_count):
-            other_train_writers[ii].add_scalar('Loss Term'+str(ii),train_loss_terms[ii], epoch)
-            other_val_writers[ii].add_scalar('Loss Term'+str(ii),val_loss_terms[ii], epoch)
-
-        if epoch%1 == 0: # save the model every 2 epochs
-            torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),} , CHECKPOINT_PATH) # model.block_junction.
-
-        print(epoch,f" train_loss:{train_loss.item()}, val_loss:{val_loss.item()}")
-
-
+            pred_classification, pred_regression, epi_unc_classification, epi_unc_regressions = metrics.calc_unc(model, inputs)
+            epi_unc_clf.append(epi_unc_classification)
+            epi_unc_rg.append(epi_unc_regressions)
+    
+    #print metrics but dont save
+    metrics.compute()
+    if ensemble_bool:
+        epi_unc_clf = torch.hstack(epi_unc_clf)
+        KL = [i['KL'] for i in epi_unc_rg]
+        BHATT = [i['Bhatt'] for i in epi_unc_rg]
+        epi_unc_rg = {'KL':torch.hstack(KL), 'Bhatt': BHATT}
+        metrics.plot_unc(epi_unc_clf, epi_unc_regressions, args.ensemble_type, args.ensemble_size, 
+            config.training_logfiles, epoch, args.seq_encoder)
+   
