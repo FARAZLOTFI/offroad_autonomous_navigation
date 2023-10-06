@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 import numpy as np 
 import torch
 
-LOG_SIG_MAX = 2 
-LOG_SIG_MIN = -2
+LOG_SIG_MAX = 0.5 
+LOG_SIG_MIN = -0.5
 
 class Metrics: 
 

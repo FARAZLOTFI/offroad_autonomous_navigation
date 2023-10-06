@@ -7,8 +7,8 @@ from MHE_MPC.system_identification import euler_from_quaternion, GPS_deg2vel
 #import MHE_MPC.config_lucas as config
 import matplotlib.pyplot as plt 
 
-LOG_SIG_MAX = 2 
-LOG_SIG_MIN = -2
+LOG_SIG_MAX = 0.5
+LOG_SIG_MIN = -0.5
 
 
 def load_data_lists(num_images, path='yo'):

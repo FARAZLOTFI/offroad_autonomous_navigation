@@ -1,6 +1,7 @@
 import pickle
 import argparse
 import torch
+import torch.nn as nn
 from torchvision import transforms
 import os
 from models.nn_model import PredictiveModelBadgr, LSTMSeqModel, TransformerSeqModel
@@ -65,6 +66,7 @@ if __name__ == "__main__":
         seq_encoder = LSTMSeqModel(n_seq_model_layers, seq_elem_dim)
     else:
         seq_encoder = TransformerSeqModel(n_seq_model_layers, seq_elem_dim)
+
     model = PredictiveModelBadgr(planning_horizon, num_event_types,
                                     action_dimension, seq_encoder, n_seq_model_layers,
                                     device = device, ensemble_size = args.ensemble_size, 

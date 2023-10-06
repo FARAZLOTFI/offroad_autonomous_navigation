@@ -3,3 +3,4 @@ classifier/models/
 *.pyc
 *.sh
 *.out
+plot_uncertainty.py

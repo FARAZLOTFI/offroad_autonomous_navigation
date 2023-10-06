@@ -19,6 +19,10 @@ class PredictiveModelBadgr(nn.Module):
         # + two-layer MLP for each action input
         super(PredictiveModelBadgr, self).__init__()
         self.planning_horizon = planning_horizon
+        if isinstance(seq_model, nn.ModuleList):
+            input_dim = seq_model[0].input_dim
+        else:
+            input_dim = seq_model.input_dim
 
         self.n_seq_model_layers = n_seq_model_layers
 
@@ -28,7 +32,7 @@ class PredictiveModelBadgr(nn.Module):
                 2 * seq_model.hidden_dim * seq_model.n_seq_model_layers
         else:
             # the state embedder just outputs a single vector
-            state_embed_dim = seq_model.input_dim
+            state_embed_dim = input_dim
 
         self.state_embedder = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5, stride=2),
@@ -55,27 +59,27 @@ class PredictiveModelBadgr(nn.Module):
         # define a function to instantiate MLPs
         def build_mlps():
             action_embed_seq = nn.Sequential(
-                nn.Linear(action_dimension, seq_model.input_dim), 
+                nn.Linear(action_dimension, input_dim), 
                 nn.ReLU(),
-                nn.Linear(seq_model.input_dim, seq_model.input_dim)
+                nn.Linear(input_dim, input_dim)
             )
             if ensemble_size == 1:
                 event_seq = nn.Sequential(
-                    nn.Linear(seq_model.input_dim, 32),
+                    nn.Linear(input_dim, 32),
                     nn.ReLU(),
                     nn.Linear(32, num_event_types)
                 )
             else:
                 if ensemble_type == 'fixed_masks':
                     shared_layer = nn.Sequential(
-                        nn.Linear(seq_model.input_dim, 32*ensemble_size),
+                        nn.Linear(input_dim, 32*ensemble_size),
                         nn.ReLU()
                         )
                     self.create_masks(ensemble_size, device)
                     heads = nn.Linear(32*ensemble_size, num_event_types+1)
                 elif ensemble_type == 'multihead':
                     shared_layer = nn.Sequential(
-                        nn.Linear(seq_model.input_dim, 32),
+                        nn.Linear(input_dim, 32),
                         nn.ReLU()
                         )
                     heads = nn.ModuleList([
@@ -124,14 +128,16 @@ class PredictiveModelBadgr(nn.Module):
             processed_actions.append(processed_action)
 
         processed_actions = torch.stack(processed_actions)
-
-        seq_embeddings = self.seq_encoder(state_embed, processed_actions)
+        if ensemble_comp < 0:
+            ensemble_comp = np.random.choice(self.ensemble_size)
+        if isinstance(self.seq_encoder, nn.ModuleList):
+            seq_embeddings = self.seq_encoder[ensemble_comp](state_embed, processed_actions)
+        else:
+            seq_embeddings = self.seq_encoder(state_embed, processed_actions)
 
         # this could be sped up by packing the embeddings into a batch and
          # passing them through the network all at once.
         outputs = []
-        if ensemble_comp < 0:
-            ensemble_comp = np.random.choice(self.ensemble_size)
         for i in range(self.planning_horizon):
             if self.ensemble_size > 1:
                 if ensemble_comp < 0:
@@ -189,6 +195,33 @@ class LSTMSeqModel(SeqModel):
         return seq_embed
     
 
+class CustomEncoderLayer(nn.Module):
+    def __init__(self, d_model, nhead, dim_feedforward):
+        super(CustomEncoderLayer, self).__init__()
+
+        # Multi-Head Self-Attention Layer
+        self.self_attn = nn.MultiheadAttention(d_model, nhead)
+
+        # Feedforward Neural Network Layer
+        self.feedforward = nn.Sequential(
+            nn.Linear(d_model, dim_feedforward),
+            nn.ReLU(),
+            nn.Linear(dim_feedforward, d_model)
+        )
+
+    def forward(self, x, src_mask=None, is_causal=None, src_key_padding_mask=None):
+        # Multi-Head Self-Attention
+        x = self.self_attn(x, x, x, attn_mask=src_mask)[0]
+
+        # Feedforward Neural Network
+        x = self.feedforward(x)
+
+        return x
+
+
+
+
+
 class TransformerSeqModel(SeqModel):
     def __init__(self, n_seq_model_layers, input_dim=16, n_heads=4):
         super().__init__(n_seq_model_layers, input_dim)
@@ -196,9 +229,8 @@ class TransformerSeqModel(SeqModel):
                                               nhead=n_heads,
                                               dim_feedforward=input_dim*4)
         self.tf_network = nn.TransformerEncoder(tf_layer, 
-                                                num_layers=n_seq_model_layers,
-                                                norm=nn.LayerNorm(input_dim)
-                                                )
+                                                num_layers=n_seq_model_layers)
+                                                #norm=nn.LayerNorm(input_dim))
 
     def forward(self, state_embed, action_embeddings):
         # add a sequence embedding
