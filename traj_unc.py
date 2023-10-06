@@ -7,7 +7,7 @@ from models.nn_model import PredictiveModelBadgr, LSTMSeqModel, TransformerSeqMo
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 #import MHE_MPC.config as config
-import MHE_MPC.config_lucas as config
+import MHE_MPC.config as config
 import matplotlib.pyplot as plt 
 from metrics import Metrics
 from torchsummary import summary
@@ -31,8 +31,8 @@ augment = transforms.Compose([
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--slurm_dir', default="",
-                        help='temp dir created by slurm on the compute node', required=True)
+    parser.add_argument('--dataset_dir', default=config.path_to_dataset,
+                        help='temp dir created by slurm on the compute node')
     parser.add_argument('--ensemble_size', default=1, type=int,
                         help='ensemble size for uncertainty estimation')
     parser.add_argument('--ensemble_type', default="fixed_masks", type=str,
@@ -42,10 +42,9 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint_path', default="", type=str,
                         help='path to saved model')
     args = parser.parse_args()
-    # $SLURM_TMPDIR/
+
     print(args)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    config.path_to_dataset = os.path.join(args.slurm_dir, 'offroad_navigation_dataset')
     # get the current date
     current_date = datetime.datetime.now()
 
@@ -140,7 +139,7 @@ if __name__ == "__main__":
     # train_classes_list = annotations_list[:int(0.8 * len(annotations_list))]
     # val_classes_list = annotations_list[int(0.8 * len(annotations_list)):]
 
-    training_samples, validation_samples = load_data_lists(len(images_list), path=config.training_logfiles)
+    training_samples, validation_samples = load_data_lists(len(images_list), path=config.working_dir)
 
     train_images_list = [images_list[i] for i in training_samples]
     val_images_list = [images_list[i] for i in validation_samples]
@@ -152,8 +151,12 @@ if __name__ == "__main__":
     validation_iterations = int(len(val_images_list)/BATCH_SIZE)
 
     metrics = Metrics(planning_horizon=planning_horizon, device=device)
-    with open('/home/nwaftp23/scratch/offroad_navigation_dataset/topics/all_topics.pkl', 'rb') as f:
-        all_topics = pickle.load(f)
+    try:
+        with open('all_topics.pkl', 'rb') as f:
+            all_topics = pickle.load(f)
+    except:
+        all_topics = {}
+
     for param in model.parameters():
         param.requires_grad = True
     # clear the gradients

@@ -59,7 +59,7 @@ if __name__ == "__main__":
     topics_list.sort()
     annotations_list.sort()
    
-    training_samples, validation_samples = load_data_lists(len(images_list))
+    training_samples, validation_samples = load_data_lists(len(images_list), config.working_dir)
 
     train_images_list = [images_list[i] for i in training_samples]
     val_images_list = [images_list[i] for i in validation_samples]

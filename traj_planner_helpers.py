@@ -3,15 +3,14 @@ import torch
 import cv2
 import numpy as np
 from MHE_MPC.system_identification import euler_from_quaternion, GPS_deg2vel
-#import MHE_MPC.config as config
-#import MHE_MPC.config_lucas as config
+import MHE_MPC.config as config
 import matplotlib.pyplot as plt 
 
 LOG_SIG_MAX = 0.5
 LOG_SIG_MIN = -0.5
 
 
-def load_data_lists(num_images, path='yo'):
+def load_data_lists(num_images, path):
     # validation samples
     try:
         validation_samples = []

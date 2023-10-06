@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 
-topic_path = '/home/nwaftp23/scratch/offroad_navigation_dataset/topics'
+topic_path = 'offroad_navigation_dataset/topics' # PATH to topic directory
 topics_files = os.listdir(topic_path)
 
 all_topics = {}

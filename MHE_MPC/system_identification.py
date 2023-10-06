@@ -6,9 +6,9 @@ import MHE_MPC.config as config
 rel_do_mpc_path = os.path.join('..','..')
 sys.path.append(rel_do_mpc_path)
 
-# Import do_mpc package:
+# =Import do_mpc package:
 # NOTE: Lucas commented out do_mpc to run on compute canada
-#import do_mpc
+import do_mpc
 
 def GPS_deg2distance_XY(lon1,lon2,lat1,lat2):
     dx = (lon1 - lon2) * 40000 * np.cos((lat1 + lat2) * np.pi / 360) / 360
