@@ -148,7 +148,7 @@ if __name__ == "__main__":
     val_images_list = [images_list[i] for i in validation_samples]
 
     BATCH_SIZE = 64
-    epochs = range(last_epoch,800)
+    epochs = range(last_epoch,1200)
     train_iterations = int(len(train_images_list)/BATCH_SIZE)
     validation_iterations = int(len(val_images_list)/BATCH_SIZE)
 

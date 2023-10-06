@@ -4,3 +4,11 @@ classifier/models/
 *.sh
 *.out
 plot_uncertainty.py
+confusion/
+traj_planner_training_logs/
+models/__pycache__/
+MHE_MPC/__pycache__
+training/models/
+results/other/
+__pycache__/
+

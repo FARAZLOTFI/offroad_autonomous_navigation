@@ -17,7 +17,7 @@ label_names = ['Tree', 'Other Obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', '
 save_misclassified = False
 
 #model to load
-model_dir = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/1_r50_gauss/'
+model_dir = '/usr/local/data/kvirji/offroad_autonomous_navigation/classifier/models/7/'
 model_fname = 'best.pt'
 
 #create dataset
@@ -123,19 +123,21 @@ with torch.no_grad(): #dont calculate gradients for test set
     print("F1: ", F1)
     print("Accuracy: {:.4f}".format(accuracy))
 
-    fig, ax = plt.subplots(figsize=(16,16))
+
+    plt.rcParams["font.size"] = "8"
+    fig, ax = plt.subplots()
     ax.matshow(cm, cmap=plt.cm.Greens)
     ax.xaxis.set_ticks_position('bottom')
-    ax.set_xticks(np.arange(N_classes), label_names)
+    ax.set_xticks(np.arange(N_classes), label_names, rotation='vertical')
     ax.set_yticks(np.arange(N_classes), label_names)
 
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            ax.text(x=j, y=i,s=cm[i, j], va='center', ha='center', size='large')
+            ax.text(x=j, y=i,s=cm[i, j], va='center', ha='center', size='medium')
     
     plt.xlabel('Predictions')
     plt.ylabel('Ground Truth')
     plt.title('Confusion Matrix')
-    plt.savefig(os.path.join(model_dir, 'confusion_matrix_{}.png'.format(test_set)))
+    plt.savefig(os.path.join(model_dir, 'confusion_matrix_{}.png'.format(test_set)), bbox_inches='tight')
     print('Saved Confusion Matrix')
 

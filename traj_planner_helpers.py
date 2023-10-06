@@ -137,15 +137,15 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
             if len(set_of_actions)<planning_horizon:
                 # note that we ignore the horizon + 1 action
                 set_of_actions.append(actions)
-
-            if (debug_):
+            #debug_ = True
+            if (debug_ ):
                 plt.figure('augmented image')
                 plt.imshow(image)
 
                 print('image: ',images_list[candidate])
                 print('topic: ', topics_list[item + i*skip_step])
                 print('class: ', classes_list[item + i*skip_step])
-
+                print('skip_step: ', skip_step)
                 input('Press enter to continue..')
 
         if not flag_bag_changed:
