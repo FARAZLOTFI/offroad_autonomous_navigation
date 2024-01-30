@@ -10,7 +10,7 @@ Here are a few samples of our dataset from different trials:
 ![repo](https://github.com/FARAZLOTFI/offroad_autonomous_navigation/assets/44290848/6cbdb552-d60f-4f75-9b79-79533a573ada)
 
 
-The link to download our dataset <https://mcgill-my.sharepoint.com/:u:/g/personal/khalil_virji_mail_mcgill_ca/EeqSokfjlP5ItDJu1XBu6GUB3WQVLOMtolhk3442upqUvw?e=rfLHmd>
+The link to download our dataset <--!https://mcgill-my.sharepoint.com/:u:/g/personal/khalil_virji_mail_mcgill_ca/EeqSokfjlP5ItDJu1XBu6GUB3WQVLOMtolhk3442upqUvw?e=rfLHmd-->
 
 # Code Structure
 * classifier/
