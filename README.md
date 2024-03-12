@@ -9,7 +9,7 @@ We also incorporate a nonlinear MPC controller that accounts for the intricacies
 Here are a few samples of our dataset from different trials: 
 ![repo](https://github.com/FARAZLOTFI/offroad_autonomous_navigation/assets/44290848/6cbdb552-d60f-4f75-9b79-79533a573ada)
 
-The [link](https://mcgill-my.sharepoint.com/:u:/g/personal/khalil_virji_mail_mcgill_ca/EeqSokfjlP5ItDJu1XBu6GUBK0uqDZ_Tl0t_noq6w9SLZg?e=5URObu) to the dataset.
+The [link](https://mcgill-my.sharepoint.com/:u:/g/personal/khalil_virji_mail_mcgill_ca/EeqSokfjlP5ItDJu1XBu6GUBK0uqDZ_Tl0t_noq6w9SLZg?e=5URObu) to the dataset. If you want to utilize our dataset in your research, kindly acknowledge our contribution by citing our paper.
 
 # Code Structure
 * classifier/
