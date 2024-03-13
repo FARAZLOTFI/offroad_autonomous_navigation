@@ -1,4 +1,4 @@
-#!/mnt/5ff2307d-f850-4368-8eeb-180d89716a8a/offroad_nav/hybrid_planner/bin/python
+#!/offroad_nav/hybrid_planner/bin/python
 import cv2
 from evotorch import Problem
 from evotorch.algorithms import SNES, CEM, CMAES
