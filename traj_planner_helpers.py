@@ -2,9 +2,8 @@ import os
 import torch
 import cv2
 import numpy as np
-from MHE_MPC.system_identification import euler_from_quaternion, GPS_deg2vel
-import MHE_MPC.config as config
-import matplotlib.pyplot as plt 
+from src.offroad_autonomous_navigation.MHE_MPC.system_identification import euler_from_quaternion, GPS_deg2vel
+import matplotlib.pyplot as plt
 
 LOG_SIG_MAX = 0.5
 LOG_SIG_MIN = -0.5
@@ -162,6 +161,18 @@ def input_preparation(images_list, images_path, topics_list, topics_path, classe
 
     return [image_batch, actions_batch], [classes_batch, orientations_batch]  # input, output
 
+def input_preparation_practice(image, augment, debug_=False):
+    image_batch = []
+    if (debug_ ):
+        plt.figure('augmented image')
+        plt.imshow(image)
+
+    image_batch.append(augment(image))
+    # image_batch = torch.from_numpy(np.array(image_batch)/255).float().cuda().permute(0,3,1,2)
+    image_batch = torch.stack(image_batch).cuda() #TODO to check!!
+
+
+    return image_batch
 
 def total_loss(planning_horizon, classification_criterion, regression_criterion, nn_out, true_out, gaussian_crit=False):
     train_loss1 = 0

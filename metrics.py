@@ -1,4 +1,3 @@
-from ignite.metrics import Precision, Recall, Accuracy, MeanSquaredError, ConfusionMatrix
 import os
 import math
 from matplotlib import pyplot as plt
@@ -15,53 +14,8 @@ class Metrics:
         self.labels = ['Tree', 'Other Obstacles', 'Human', 'Waterhole', 'Mud', 'Jump', 'Traversable Grass', 'Smooth Road', 'Wet Leaves']
         self.planning_horizon = planning_horizon
         self.device = device
-        self.recall = []
-        self.precision = []
-        self.f1 = []
-        self.accuracy = []
-        self.mse = []
-        self.cm = []
-        for _ in range(planning_horizon):
-            self.recall.append(Recall(average=True, device=self.device))
-            self.precision.append(Precision(average=True, device=self.device))
-            p = Precision(device=self.device, average=False)
-            r = Recall(device=self.device, average=False)
-            f1 = (p * r * 2 / (p + r))
-            self.f1.append(f1)
-            self.accuracy.append(Accuracy(device=self.device))
-            self.mse.append(MeanSquaredError(device=self.device))
-            self.cm.append(ConfusionMatrix(num_classes=len(self.labels), device=self.device))
 
     #reset all metrics
-    def reset(self): 
-        for i in range(self.planning_horizon): 
-            #classification metrics
-            self.recall[i].reset()
-            self.precision[i].reset()
-            self.f1[i].reset()
-            self.accuracy[i].reset()
-            self.cm[i].reset()
-            
-            #regression metrics
-            self.mse[i].reset()
-        return
-    
-    #update all metrics with batch data
-    def update(self, outputs, labels, gauss_out = 1):
-        for i in range(self.planning_horizon): 
-            #classification metrics
-            self.precision[i].update((outputs[0][i],labels[0][i]))
-            self.recall[i].update((outputs[0][i],labels[0][i]))
-            self.accuracy[i].update((outputs[0][i],labels[0][i]))
-            self.f1[i].update((outputs[0][i],labels[0][i]))
-            self.cm[i].update((outputs[0][i],labels[0][i]))
-
-            #regression metrics
-            if gauss_out:
-                self.mse[i].update((outputs[1][i][:,0], labels[1][i]))
-            else:
-                self.mse[i].update((outputs[1][i], labels[1][i]))
-        return
 
     def kl_div(self, mus, sigs):
         mus = mus.type(torch.float64)
@@ -142,11 +96,15 @@ class Metrics:
         mix_dist = cat_dist.mean(0)
         cat_dist = cat_dist.type(torch.float64)
         mix_dist = mix_dist.type(torch.float64)
-        pred_classification = mix_dist[0,1,:].argmax()
+        try:
+            pred_classification = mix_dist[0, 1, :].argmax()
+        except:
+            print('Are you using batch_size=1 ?')
+            pred_classification = mix_dist.argmax(dim=2)[:, 0]
         pred_regression = regression_outputs[:,:,:,0].mean(0)
         epi_unc_classification = -(mix_dist*torch.log(mix_dist)).sum(2)+(cat_dist*torch.log(cat_dist)).sum(3).mean(0)
-        return pred_classification, pred_regression, epi_unc_classification, epi_unc_regressions 
-        
+        return [pred_classification, mix_dist], pred_regression, epi_unc_classification, epi_unc_regressions # instead of returning pred_classification, return mix_dist
+
 
     #compute metrics with data passed in through update
     def compute(self, regression_filename=None, classification_filename=None, classification_title='Classification Metrics', regression_title='Regression Metrics'):

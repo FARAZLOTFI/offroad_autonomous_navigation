@@ -2,7 +2,7 @@ import numpy as np
 import math
 import sys
 import os
-import MHE_MPC.config as config
+import src.offroad_autonomous_navigation.MHE_MPC.config as config
 rel_do_mpc_path = os.path.join('..','..')
 sys.path.append(rel_do_mpc_path)
 
@@ -44,14 +44,14 @@ def euler_from_quaternion(x, y, z, w):
     return roll_x, pitch_y, yaw_z  # in radians
 
 class MHE_MPC():
-    def __init__(self):
+    def __init__(self, GPS_initial_data):
         self.model = do_mpc.model.Model('continuous') # either 'discrete' or 'continuous'
         self.model_initialization()
 
         self.data_counter = 0
         self.previous_file_number = None
         # Measurement configuration comes before state initialization as initialization is done based on the first meas
-        self.offline_mode = True
+        self.offline_mode = False
         if self.offline_mode:
             self.topic_data_folder_path =  config.realworld_data_path + 'topics/'# TODO to put this in a config file
             self.topic_data_list = os.listdir(self.topic_data_folder_path)
@@ -64,7 +64,7 @@ class MHE_MPC():
         self.previous_GPS_lat = None
         self.bearing = 0
 
-        self.state_initialization()
+        self.state_initialization(initial_values=GPS_initial_data)
         # MHE comes after all these as it needs the state initial value as the first guess
         self.mhe = do_mpc.estimator.MHE(self.model,
                                    ['pose_x', 'pose_y', 'global_orientation', 'velocity', 'Pitch', 'C1','Cm1', 'Cm2', 'Cr2', 'Cr0', 'mu_m'])
@@ -188,9 +188,16 @@ class MHE_MPC():
         self.mhe.p_est0 = np.array([0.5, 12, 2.5, 0.15, 0.7, 4.0]).reshape(-1, 1)
         self.mhe.set_initial_guess()
 
-    def state_initialization(self):
+    def state_initialization(self, initial_values = None):
         # based on that we initiate our MHE model -> it needs to come from the first measurement
-        lon_GPS, lat_GPS, yaw, pitch, steering_angle, throttle = self.measurement_update()
+
+        lon_GPS = initial_values[0]
+        lat_GPS = initial_values[1]
+        yaw = 0
+        pitch = 0
+        steering_angle = 0
+        throttle = 0
+
         # this we use as the origiVn to calculate the distance from this until the end
         self.initial_GPS_lon = lon_GPS
         self.initial_GPS_lat = lat_GPS
@@ -201,55 +208,30 @@ class MHE_MPC():
         # we assume that the velocity is zero in the beginning
         self.states = np.array([0.0, 0.0, 0.0, 0.0, pitch]).reshape(-1, 1)
 
-    def MHE(self):
-        pass
+    def measurement_update(self, given_measurements):
 
-    def measurement_update(self, offline_mode=True):
-
-        if offline_mode:
-            file_path = self.topic_data_folder_path + self.topic_data_list[self.data_counter]
-            file_number = int(float(file_path[-8:-4]))
-            if self.previous_file_number is not None:
-                if file_number - self.previous_file_number == 1:  # TODO this should be used
-                    flag_new_rosbag = False
-                else:
-                    flag_new_rosbag = True
-
-            self.previous_file_number = file_number
-            # the order of the data is: steering angle, throttle, w, x, y, z, Lon, lat,
-            # then, timestamps for the image, depth, teensy, imu, and gps topics
-            loaded_data = np.load(file_path)
-            steering_angle, throttle, w, x, y, z, lon_GPS, lat_GPS = loaded_data[:8]
-            self.data_counter += 1
-        else:
-            pass
-
+        # we have to update steering_angle, throttle, w, x, y, z, lon_GPS, lat_GPS here
+        w, x, y, z = given_measurements[0].w, given_measurements[0].x, given_measurements[0].y, given_measurements[0].z
+        lon_GPS = given_measurements[1][0]
+        lat_GPS = given_measurements[1][1]
+        steering_angle = given_measurements[2]
+        throttle = given_measurements[3]
         roll, pitch, yaw = euler_from_quaternion(x, y, z, w)
         pitch = -pitch
-        if self.initial_GPS_lon is None:
-            # note, the following is provided in degree! also we don't have vel as
-            # at this point there is only one GPS point available
-            return np.array([lon_GPS, lat_GPS, yaw, pitch, steering_angle*(-0.6), throttle])
-        else: # we have to convert the degree to distance; the following gives us the distance in km
-            dx, dy = GPS_deg2distance_XY(self.initial_GPS_lon, lon_GPS, self.initial_GPS_lat, lat_GPS)
-            # dx and dy here are calculated nesbat be sharayet avalie na lahze ghabl k darvaghe ma lahze ghabl vasamoon moheme
-            vel, dbearing = GPS_deg2vel(self.previous_GPS_lon, lon_GPS, self.previous_GPS_lat, lat_GPS)
-            self.previous_GPS_lat = lat_GPS
-            self.previous_GPS_lon = lon_GPS
-            self.bearing = dbearing
-            error = (yaw + 3.02) - dbearing
+        dx, dy = GPS_deg2distance_XY(self.initial_GPS_lon, lon_GPS, self.initial_GPS_lat, lat_GPS)
+        # dx and dy here are calculated nesbat be sharayet avalie na lahze ghabl k darvaghe ma lahze ghabl vasamoon moheme
+        vel, dbearing = GPS_deg2vel(self.previous_GPS_lon, lon_GPS, self.previous_GPS_lat, lat_GPS)
+        self.previous_GPS_lat = lat_GPS
+        self.previous_GPS_lon = lon_GPS
+        self.bearing = dbearing
+        #error = (yaw + 3.02) - dbearing
 
-            return np.array([dx, dy, dbearing, vel, pitch, steering_angle * (-0.6), throttle])#, yaw
+        return np.array([dx, dy, dbearing, vel, pitch, steering_angle * (-0.6), throttle])#, yaw
+
 
 
 if __name__ == '__main__':
-    system = MHE_MPC()
-    angle_list = []
-    # now the main loop
-    for i in range(len(system.topic_data_list) - 1):
-        y0 = system.measurement_update()
-        #angle_list.append([y0[2],yaw,y0[5]])
-        x0 = system.mhe.make_step(y0)
-
-    np.save(config.realworld_data_path+ 'estimated_states.npy', system.mhe.data._x)
-    np.save(config.realworld_data_path + 'estimated_parameters.npy', system.mhe.data._p)
+    GPS_initial_data_long = 0
+    GPS_initial_data_lat = 0
+    GPS_data = [GPS_initial_data_long, GPS_initial_data_lat]
+    system = MHE_MPC(GPS_data)
