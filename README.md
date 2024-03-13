@@ -29,5 +29,5 @@ The [link](https://mcgill-my.sharepoint.com/:u:/g/personal/khalil_virji_mail_mcg
 * MHE_MPC
   *  hybrid_controller.py - Implementation of the hybrid planner
   *  System Identification - The moving horizon estimator to estimate the states and parameters of the vehicle
-* Uncertainty Branch
-  * This branch has the same structure as the main branch, while incorporating the uncertainty in it.    
+* ROS Branch
+  * This branch contains the req changes to run the planner as a ros node.    
