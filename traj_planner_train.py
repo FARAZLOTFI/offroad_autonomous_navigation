@@ -153,6 +153,7 @@ if __name__ == "__main__":
     try:
         with open('all_topics.pkl', 'rb') as f:
             all_topics = pickle.load(f)
+            print('List of topics loaded!')
     except:
         all_topics = {}     
     for param in model.parameters():
