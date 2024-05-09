@@ -3,6 +3,7 @@ import math
 from matplotlib import pyplot as plt
 import numpy as np 
 import torch
+import time
 
 LOG_SIG_MAX = 0.5 
 LOG_SIG_MIN = -0.5
@@ -84,6 +85,7 @@ class Metrics:
             model_outputs = model.training_phase_output(inputs, ensemble_comp=i)
             classification_outputs.append(model_outputs[0].detach().cpu())
             regression_outputs.append(model_outputs[1].detach().cpu())
+
         classification_outputs = torch.stack(classification_outputs)
         regression_outputs = torch.stack(regression_outputs)
         dist_metrics = ['KL', 'Bhatt']
@@ -97,7 +99,7 @@ class Metrics:
         cat_dist = cat_dist.type(torch.float64)
         mix_dist = mix_dist.type(torch.float64)
         try:
-            pred_classification = mix_dist[0, 1, :].argmax()
+            pred_classification = mix_dist.argmax(dim=2)
         except:
             print('Are you using batch_size=1 ?')
             pred_classification = mix_dist.argmax(dim=2)[:, 0]
